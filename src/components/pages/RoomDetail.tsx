@@ -56,10 +56,11 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
     if (!searchParams.checkIn) e.checkIn = 'Check-in date required'
     if (!searchParams.checkOut) e.checkOut = 'Check-out date required'
     if (form.payment === 'card') {
-      if (form.cardNumber.replace(/\s/g, '').length < 16) e.cardNumber = 'Enter a valid 16-digit card number'
-      if (!form.cardExpiry.match(/^\d{2}\/\d{2}$/)) {
+    if (form.cardNumber.replace(/\s/g, '').length < 16) e.cardNumber = 'Enter a valid 16-digit card number'
+    if (!form.cardExpiry.match(/^\d{2}\/\d{2}$/)) {
   e.cardExpiry = 'Format: MM/YY'
-}
+  }
+
       if (form.cardCvc.length < 3) e.cardCvc = 'Enter 3-digit CVC'
     }
     setErrors(e)
@@ -228,7 +229,7 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
                   className="font-display text-3xl italic"
                   style={{ color: 'var(--accent)', fontWeight: 600 }}
                 >
-                  formatPeso{room.price}
+                  {formatPeso(room.price)}
                 </span>
                 <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                   / night
@@ -240,19 +241,19 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
                   style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
                 >
                   <div className="flex justify-between">
-                    <span>formatPeso{room.price} × {nights} nights</span>
-                    <span>formatPeso{total}</span>
+                    <span>{formatPeso(room.price)} × {nights} nights</span>
+                    <span>{formatPeso(total)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Taxes & fees (10%)</span>
-                    <span>€{taxAmount}</span>
+                    <span>{formatPeso(taxAmount)}</span>
                   </div>
                   <div
                     className="flex justify-between font-semibold pt-2 border-t text-sm"
                     style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
                   >
                     <span>Total</span>
-                    <span>€{grandTotal}</span>
+                    <span>{formatPeso(grandTotal)}</span>
                   </div>
                 </div>
               )}
@@ -449,7 +450,11 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
                 className="w-full py-3.5 text-sm tracking-widests uppercase font-medium transition-opacity hover:opacity-85 disabled:opacity-50"
                 style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
               >
-                {submitted ? 'Confirming...' : submitting ? 'Checking availability...' : `Confirm Reservation · formatPes{grandTotal}`}
+                {submitted
+  ? 'Confirming...'
+  : submitting
+    ? 'Checking availability...'
+    : `Confirm Reservation · ${formatPeso(grandTotal)}`}
               </button>
 
               {confirmOpen && (

@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, CreditCard, Users, XCircle, CheckCircle, Clock, Save } from 'lucide-react'
+import {
+  Calendar,
+  CreditCard,
+  Users,
+  XCircle,
+  CheckCircle,
+  Clock
+} from 'lucide-react'
 import type { Booking, Page, User } from '../../App'
 import { isCancellationAllowed, loadBookings, updateBookingStatus } from '../../lib/bookingStore'
-import { getBookedDatesForRoom } from '../../lib/availability'
+import { formatPeso } from '../../lib/currency'
 
 
 interface Props {
@@ -116,16 +123,13 @@ export default function MyBookings({ navigate, user }: Props) {
               >
                 No
               </button>
-              <button
-                onClick={() => {
-                  const booking = bookings.find((b) => b.id === confirmBookingId)
-                  if (booking) handleCancelConfirmed(booking)
-                }}
-                className="flex-1 px-4 py-2 text-sm tracking-[0.2em] uppercase border transition-opacity hover:opacity-70 border-red-500 text-red-500"
-                style={{ backgroundColor: 'transparent' }}
-              >
-                Yes
-              </button>
+                <button
+  onClick={handleCancelConfirmed}
+  className="flex-1 px-4 py-2 text-sm tracking-[0.2em] uppercase border transition-opacity hover:opacity-70 border-red-500 text-red-500"
+  style={{ backgroundColor: 'transparent' }}
+>
+  Yes
+</button>
             </div>
           </div>
         </div>
@@ -177,7 +181,9 @@ export default function MyBookings({ navigate, user }: Props) {
                     <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div>
                         <p className="text-xs tracking-[0.2em] uppercase mb-1 text-muted-foreground">Total</p>
-                        <p className="font-semibold text-accent">€{booking.totalPrice}</p>
+                        <p className="font-semibold text-accent">
+  {formatPeso(booking.totalPrice)}
+</p>
                       </div>
                       {booking.status !== 'cancelled' && (
                         <button
