@@ -141,10 +141,10 @@ const updateStatus = async (
   }
 
   const addRoom = async () => {
-    const nextId = `${rooms.length + 101}`
+    const nextId = `formatPeso{rooms.length + 101}`
     const newRoom: RoomItem = {
       id: nextId,
-      name: `New Room ${nextId}`,
+      name: `New Room formatPeso{nextId}`,
       type: 'Standard',
       price: 250,
       status: 'available',
@@ -173,9 +173,9 @@ const updateStatus = async (
   const handleWalkInCreate = (e: React.FormEvent) => {
     e.preventDefault()
     const booking: Booking = {
-      id: `VNY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      id: `VNY-formatPeso{Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       room: {
-        id: `walkin-${walkInForm.roomName.toLowerCase().replace(/\s+/g, '-')}`,
+        id: `walkin-formatPeso{walkInForm.roomName.toLowerCase().replace(/\s+/g, '-')}`,
         name: walkInForm.roomName,
         type: 'walk-in',
         price: walkInForm.totalPrice,
@@ -268,9 +268,9 @@ const updateStatus = async (
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {[
-              { label: 'Total Revenue', value: `€${revenue.toLocaleString()}`, sub: 'Confirmed bookings', icon: <TrendingUp size={18} />, accent: true },
-              { label: 'Confirmed', value: confirmed, sub: `${pending} pending`, icon: <CheckCircle size={18} />, accent: false },
-              { label: 'Rooms Available', value: rooms.filter((r) => r.status === 'available').length, sub: `${rooms.filter((r) => r.status === 'occupied').length} occupied`, icon: <BedDouble size={18} />, accent: false },
+              { label: 'Total Revenue', value: `formatPeso{revenue.toLocaleString()}`, sub: 'Confirmed bookings', icon: <TrendingUp size={18} />, accent: true },
+              { label: 'Confirmed', value: confirmed, sub: `formatPeso{pending} pending`, icon: <CheckCircle size={18} />, accent: false },
+              { label: 'Rooms Available', value: rooms.filter((r) => r.status === 'available').length, sub: `formatPeso{rooms.filter((r) => r.status === 'occupied').length} occupied`, icon: <BedDouble size={18} />, accent: false },
               { label: 'Total Guests', value: reservations.length, sub: 'All time', icon: <Users size={18} />, accent: false },
             ].map((kpi) => (
               <div

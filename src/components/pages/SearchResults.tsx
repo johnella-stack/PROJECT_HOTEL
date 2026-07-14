@@ -3,6 +3,7 @@ import { SlidersHorizontal, Wifi, Coffee, Car, Dumbbell, Wind, Tv, Users, Maximi
 import type { Page, SearchParams, Room, User } from '../../App'
 import { loadRoomsFromServer, persistStoredRooms, toPublicRoom } from '../../lib/roomStore'
 import { getBookedDatesForRoom } from '../../lib/availability'
+import { formatPeso } from '../../lib/currency'
 
 
 interface Props {
@@ -348,7 +349,7 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
           </h1>
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
             {filtered.length} {filtered.length === 1 ? 'room' : 'rooms'} found
-            {nights > 1 ? ` · ${nights} nights` : ''}
+            {nights > 1 ? ` · formatPeso{nights} nights` : ''}
           </p>
         </div>
       </div>
@@ -417,7 +418,7 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
                         className="font-display text-2xl font-semibold"
                         style={{ color: 'var(--accent)' }}
                       >
-                        €{room.price}
+                       {formatPeso(room.price)}
                       </p>
                       <p
                         className="text-xs"
@@ -430,7 +431,7 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
                           className="text-xs mt-0.5 font-mono"
                           style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-dm-mono)' }}
                         >
-                          €{(room.price * nights).toLocaleString()} total
+                          formatPeso{(room.price * nights).toLocaleString()} total
                         </p>
                       )}
                     </div>

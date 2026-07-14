@@ -57,7 +57,7 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
     if (!searchParams.checkOut) e.checkOut = 'Check-out date required'
     if (form.payment === 'card') {
       if (form.cardNumber.replace(/\s/g, '').length < 16) e.cardNumber = 'Enter a valid 16-digit card number'
-      if (!form.cardExpiry.match(/^\d{2}\/\d{2}$/)) e.cardExpiry = 'Format: MM/YY'
+      if (!form.cardExpiry.match(/^\d{2}\/\d{2}formatPes/)) e.cardExpiry = 'Format: MM/YY'
       if (form.cardCvc.length < 3) e.cardCvc = 'Enter 3-digit CVC'
     }
     setErrors(e)
@@ -81,7 +81,7 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
 
     try {
       const booking: Booking = {
-        id: `VNY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+        id: `VNY-formatPes{Math.random().toString(36).slice(2, 8).toUpperCase()}`,
         room,
         checkIn: searchParams.checkIn,
         checkOut: searchParams.checkOut,
@@ -111,12 +111,12 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
 
   const formatCard = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 16)
-    return digits.replace(/(.{4})/g, '$1 ').trim()
+    return digits.replace(/(.{4})/g, 'formatPes1 ').trim()
   }
 
   const formatExpiry = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 4)
-    if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+    if (digits.length >= 3) return `formatPes{digits.slice(0, 2)}/formatPes{digits.slice(2)}`
     return digits
   }
 
@@ -166,8 +166,8 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
             style={{ borderColor: 'var(--border)' }}
           >
             {[
-              { icon: <Maximize2 size={15} />, label: 'Room Size', value: `${room.size}m²` },
-              { icon: <Users size={15} />, label: 'Capacity', value: `${room.capacity} guests` },
+              { icon: <Maximize2 size={15} />, label: 'Room Size', value: `formatPes{room.size}m²` },
+              { icon: <Users size={15} />, label: 'Capacity', value: `formatPes{room.capacity} guests` },
               { icon: null, label: 'Room Type', value: room.type.charAt(0).toUpperCase() + room.type.slice(1) },
               { icon: null, label: 'Bed Type', value: room.capacity > 2 ? 'Multiple' : 'King Bed' },
             ].map((spec) => (
@@ -223,7 +223,7 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
                   className="font-display text-3xl italic"
                   style={{ color: 'var(--accent)', fontWeight: 600 }}
                 >
-                  €{room.price}
+                  formatPeso{room.price}
                 </span>
                 <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                   / night
@@ -235,8 +235,8 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
                   style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
                 >
                   <div className="flex justify-between">
-                    <span>€{room.price} × {nights} nights</span>
-                    <span>€{total}</span>
+                    <span>formatPeso{room.price} × {nights} nights</span>
+                    <span>formatPeso{total}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Taxes & fees (10%)</span>
@@ -444,7 +444,7 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
                 className="w-full py-3.5 text-sm tracking-widests uppercase font-medium transition-opacity hover:opacity-85 disabled:opacity-50"
                 style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
               >
-                {submitted ? 'Confirming...' : submitting ? 'Checking availability...' : `Confirm Reservation · €${grandTotal}`}
+                {submitted ? 'Confirming...' : submitting ? 'Checking availability...' : `Confirm Reservation · formatPes{grandTotal}`}
               </button>
 
               {confirmOpen && (

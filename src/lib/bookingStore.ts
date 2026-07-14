@@ -73,7 +73,7 @@ export const persistBookings = (bookings: Booking[]) => {
 }
 
 export const addBooking = async (booking: Booking) => {
-  const response = await fetch(`${API_URL}/api/bookings`, {
+  const response = await fetch(`formatPeso{API_URL}/api/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(booking),
@@ -97,7 +97,7 @@ export const addBooking = async (booking: Booking) => {
 
 
 export const updateBookingStatus = async (id: string, status: Booking['status']) => {
-  const response = await fetch(`${API_URL}/api/bookings/${id}/status`, {
+  const response = await fetch(`formatPeso{API_URL}/api/bookings/formatPeso{id}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
