@@ -22,7 +22,7 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 })
 const DEFAULT_ROOMS = [
-  { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'occupied', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 0 },
+ { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'available', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 1 },
   { id: '205', name: 'Superior Twin Room', type: 'Standard', price: 210, status: 'available', floor: 2, last_cleaned: '2026-07-08 10:15', image: 'https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=700&h=480&fit=crop&auto=format', size: 32, capacity: 2, available: 1 },
   { id: '312', name: 'Deluxe King Suite', type: 'Deluxe', price: 320, status: 'occupied', floor: 3, last_cleaned: '2026-07-07 14:00', image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=700&h=480&fit=crop&auto=format', size: 45, capacity: 2, available: 0 },
   { id: '401', name: 'Junior Suite', type: 'Deluxe', price: 265, status: 'maintenance', floor: 4, last_cleaned: '2026-07-06 11:30', image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=700&h=480&fit=crop&auto=format', size: 52, capacity: 3, available: 0 },
@@ -193,56 +193,7 @@ async function hasBookingConflict(roomId, checkIn, checkOut) {
 
   return Number(rows[0].count) > 0
 }
-async function syncRoomStatuses() {
-  try {
-    await pool.query(
-      `UPDATE rooms
-       SET status = 'available',
-           available = 1
-       WHERE status = 'occupied'
-         AND NOT EXISTS (
-           SELECT 1
-           FROM bookings b
-           WHERE b.status = 'confirmed'
-             AND (
-               b.room_id = rooms.id
-               OR (
-                 b.room_id IS NULL
-                 AND LOWER(b.room_name) = LOWER(rooms.name)
-               )
-             )
-             AND CURDATE() >= b.check_in
-             AND CURDATE() < b.check_out
-         )`
-    )
 
-    await pool.query(
-      `UPDATE rooms
-       SET status = 'occupied',
-           available = 0
-       WHERE status != 'maintenance'
-         AND EXISTS (
-           SELECT 1
-           FROM bookings b
-           WHERE b.status = 'confirmed'
-             AND (
-               b.room_id = rooms.id
-               OR (
-                 b.room_id IS NULL
-                 AND LOWER(b.room_name) = LOWER(rooms.name)
-               )
-             )
-             AND CURDATE() >= b.check_in
-             AND CURDATE() < b.check_out
-         )`
-    )
-  } catch (error) {
-    console.error(
-      'Sync room statuses error:',
-      error.message
-    )
-  }
-}
 
 app.get('/api/health', async (_req, res) => {
   try {
@@ -506,7 +457,7 @@ app.get('/api/rooms', async (req, res) => {
   const { checkIn, checkOut } = req.query
 
   try {
-    await syncRoomStatuses()
+   
     const [rooms] = await pool.query('SELECT * FROM rooms ORDER BY name')
     let bookedRoomIds = new Set()
 
@@ -635,6 +586,12 @@ app.listen(port, async () => {
     await createTables()
     await ensureBookingsSchema()
     await seedRooms()
+    await pool.query(
+  `UPDATE rooms
+   SET status = 'available',
+       available = 1
+   WHERE id = '101'`
+)
 
     console.log('Database initialized successfully')
   } catch (error) {
