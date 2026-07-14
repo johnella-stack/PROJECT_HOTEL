@@ -379,29 +379,47 @@ app.get('/api/rooms/:id/availability', async (req, res) => {
 })
 
 app.post('/api/rooms', async (req, res) => {
-  const room = req.body
   try {
+    const room = req.body
+
     await pool.query(
-      `INSERT INTO rooms (id, name, type, price, status, floor, last_cleaned, image, size, capacity, available)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO rooms
+      (
+        id,
+        name,
+        type,
+        price,
+        status,
+        floor,
+        last_cleaned,
+        image,
+        size,
+        capacity,
+        available
+      )
+      VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?)`,
       [
         room.id,
         room.name,
         room.type,
         room.price,
-        room.status || 'available',
-        room.floor || 1,
-        room.lastCleaned || new Date().toLocaleString(),
-        room.image ?? null,
-        room.size ?? null,
-        room.capacity ?? null,
-        room.available !== false ? 1 : 0,
+        room.status,
+        room.floor,
+        room.image,
+        room.size,
+        room.capacity,
+        room.available,
       ]
     )
+
     res.status(201).json(room)
   } catch (error) {
     console.error('Create room error:', error.message)
-    res.status(500).json({ message: 'Unable to create room' })
+
+    res.status(500).json({
+      message: 'Unable to create room',
+      error: error.message,
+    })
   }
 })
 
