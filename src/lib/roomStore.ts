@@ -32,21 +32,74 @@ const fallbackImage = (name: string, type: string) => {
   return 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format'
 }
 
-const normalizeRoomRecord = (room: Partial<RoomRecord> & Record<string, unknown>): RoomRecord => ({
-  id: String(room.id ?? ''),
-  name: String(room.name ?? 'Room'),
-  type: String(room.type ?? 'standard'),
-  price: Number(room.price) || 0,
-  status: (room.status as RoomStatus) || 'available',
-  floor: Number(room.floor) || 1,
-  lastCleaned: String(room.lastCleaned ?? new Date().toLocaleString()),
-  image: typeof room.image === 'string' ? room.image : undefined,
-  size: typeof room.size === 'number' ? room.size : undefined,
-  capacity: typeof room.capacity === 'number' ? room.capacity : undefined,
-  available: typeof room.available === 'boolean' ? room.available : true,
-  bookedForDates: typeof room.bookedForDates === 'boolean' ? room.bookedForDates : false,
-})
+const normalizeRoomRecord = (
+  room: Partial<RoomRecord> & Record<string, unknown>
+): RoomRecord => {
+  const statusValue = String(room.status ?? 'available').toLowerCase()
 
+  const status: RoomStatus =
+    statusValue === 'occupied' || statusValue === 'maintenance'
+      ? statusValue
+      : 'available'
+
+  const rawAvailable = (room as Record<string, unknown>).available
+  const rawBookedForDates = (room as Record<string, unknown>).bookedForDates
+  const rawBookedForDatesSnake = (room as Record<string, unknown>).booked_for_dates
+  const rawLastCleaned = (room as Record<string, unknown>).last_cleaned
+
+  const available =
+    rawAvailable === true ||
+    rawAvailable === 1 ||
+    rawAvailable === '1' ||
+    rawAvailable === 'true'
+
+  const bookedForDates =
+    rawBookedForDates === true ||
+    rawBookedForDates === 1 ||
+    rawBookedForDates === '1' ||
+    rawBookedForDates === 'true' ||
+    rawBookedForDatesSnake === true ||
+    rawBookedForDatesSnake === 1 ||
+    rawBookedForDatesSnake === '1' ||
+    rawBookedForDatesSnake === 'true'
+
+  return {
+    id: String(room.id ?? ''),
+    name: String(room.name ?? 'Room'),
+    type: String(room.type ?? 'standard'),
+    price: Number(room.price) || 0,
+    status,
+    floor: Number(room.floor) || 1,
+
+    lastCleaned: String(
+      room.lastCleaned ??
+        rawLastCleaned ??
+        new Date().toISOString()
+    ),
+
+    image:
+      typeof room.image === 'string'
+        ? room.image
+        : undefined,
+
+    size:
+      room.size !== undefined
+        ? Number(room.size)
+        : undefined,
+
+    capacity:
+      room.capacity !== undefined
+        ? Number(room.capacity)
+        : undefined,
+
+    available:
+      rawAvailable === undefined
+        ? status === 'available'
+        : available,
+
+    bookedForDates,
+  }
+}
 export const readStoredRooms = (): RoomRecord[] => {
   if (typeof window === 'undefined') return []
 
@@ -116,12 +169,38 @@ export const toPublicRoom = (room: RoomRecord): Room => ({
   name: room.name,
   type: room.type.toLowerCase(),
   price: room.price,
-  size: room.size ?? (room.type.toLowerCase() === 'deluxe' ? 45 : room.type.toLowerCase() === 'executive' ? 55 : 28),
-  capacity: room.capacity ?? (room.name.toLowerCase().includes('penthouse') ? 4 : 2),
-  available: room.status === 'available',
-  image: room.image ?? fallbackImage(room.name, room.type),
-  features: ['WiFi', 'TV', 'Air Conditioning'],
+
+  size:
+    room.size ??
+    (
+      room.type.toLowerCase() === 'deluxe'
+        ? 45
+        : room.type.toLowerCase() === 'executive'
+          ? 55
+          : 28
+    ),
+
+  capacity:
+    room.capacity ??
+    (room.name.toLowerCase().includes('penthouse') ? 4 : 2),
+
+  available:
+    room.status === 'available' &&
+    room.available !== false &&
+    room.bookedForDates !== true,
+
+  image:
+    room.image ??
+    fallbackImage(room.name, room.type),
+
+  features: [
+    'WiFi',
+    'TV',
+    'Air Conditioning',
+  ],
+
   description: `${room.name} is currently ${room.status}.`,
+
   status: room.status,
   floor: room.floor,
   lastCleaned: room.lastCleaned,
