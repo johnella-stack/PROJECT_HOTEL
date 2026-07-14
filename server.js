@@ -150,32 +150,98 @@ async function ensureBookingsSchema() {
 async function getBookedRoomIds(checkIn, checkOut) {
   const [rows] = await pool.query(
     `SELECT DISTINCT COALESCE(room_id, (
-        SELECT r.id FROM rooms r WHERE LOWER(r.name) = LOWER(b.room_name) LIMIT 1
+        SELECT r.id
+        FROM rooms r
+        WHERE LOWER(r.name) = LOWER(b.room_name)
+        LIMIT 1
       )) AS room_id
      FROM bookings b
-     WHERE status NOT IN ('cancelled')
+     WHERE status = 'confirmed'
        AND check_in < ?
        AND check_out > ?`,
     [checkOut, checkIn]
   )
-  return new Set(rows.map((row) => row.room_id).filter(Boolean))
+
+  return new Set(
+    rows
+      .map((row) => String(row.room_id))
+      .filter(Boolean)
+  )
 }
 
 async function hasBookingConflict(roomId, checkIn, checkOut) {
   const [rows] = await pool.query(
-    `SELECT COUNT(*) AS count FROM bookings
-     WHERE status NOT IN ('cancelled')
+    `SELECT COUNT(*) AS count
+     FROM bookings
+     WHERE status = 'confirmed'
        AND check_in < ?
        AND check_out > ?
        AND (
          room_id = ?
-         OR (room_id IS NULL AND LOWER(room_name) = (
-           SELECT LOWER(name) FROM rooms WHERE id = ? LIMIT 1
-         ))
+         OR (
+           room_id IS NULL
+           AND LOWER(room_name) = (
+             SELECT LOWER(name)
+             FROM rooms
+             WHERE id = ?
+             LIMIT 1
+           )
+         )
        )`,
     [checkOut, checkIn, roomId, roomId]
   )
-  return rows[0].count > 0
+
+  return Number(rows[0].count) > 0
+}
+async function syncRoomStatuses() {
+  try {
+    await pool.query(
+      `UPDATE rooms
+       SET status = 'available',
+           available = 1
+       WHERE status = 'occupied'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM bookings b
+           WHERE b.status = 'confirmed'
+             AND (
+               b.room_id = rooms.id
+               OR (
+                 b.room_id IS NULL
+                 AND LOWER(b.room_name) = LOWER(rooms.name)
+               )
+             )
+             AND CURDATE() >= b.check_in
+             AND CURDATE() < b.check_out
+         )`
+    )
+
+    await pool.query(
+      `UPDATE rooms
+       SET status = 'occupied',
+           available = 0
+       WHERE status != 'maintenance'
+         AND EXISTS (
+           SELECT 1
+           FROM bookings b
+           WHERE b.status = 'confirmed'
+             AND (
+               b.room_id = rooms.id
+               OR (
+                 b.room_id IS NULL
+                 AND LOWER(b.room_name) = LOWER(rooms.name)
+               )
+             )
+             AND CURDATE() >= b.check_in
+             AND CURDATE() < b.check_out
+         )`
+    )
+  } catch (error) {
+    console.error(
+      'Sync room statuses error:',
+      error.message
+    )
+  }
 }
 
 app.get('/api/health', async (_req, res) => {
@@ -321,14 +387,118 @@ app.post('/api/bookings', async (req, res) => {
   }
 })
 app.put('/api/bookings/:id/status', async (req, res) => {
-  const { status } = req.body
+  const connection = await pool.getConnection()
+
   try {
-    const [result] = await pool.query('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id])
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Booking not found' })
-    res.json({ ok: true })
+    const { status } = req.body
+    const bookingId = req.params.id
+
+    const allowedStatuses = [
+      'pending',
+      'confirmed',
+      'cancelled',
+    ]
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: 'Invalid booking status',
+      })
+    }
+
+    await connection.beginTransaction()
+
+    const [bookings] = await connection.query(
+      `SELECT id, room_id, room_name
+       FROM bookings
+       WHERE id = ?
+       LIMIT 1`,
+      [bookingId]
+    )
+
+    if (bookings.length === 0) {
+      await connection.rollback()
+
+      return res.status(404).json({
+        message: 'Booking not found',
+      })
+    }
+
+    const booking = bookings[0]
+
+    let roomId = booking.room_id
+
+    if (!roomId) {
+      const [rooms] = await connection.query(
+        `SELECT id
+         FROM rooms
+         WHERE LOWER(name) = LOWER(?)
+         LIMIT 1`,
+        [booking.room_name]
+      )
+
+      if (rooms.length > 0) {
+        roomId = rooms[0].id
+      }
+    }
+
+    await connection.query(
+      `UPDATE bookings
+       SET status = ?
+       WHERE id = ?`,
+      [status, bookingId]
+    )
+
+    if (roomId && status === 'confirmed') {
+      await connection.query(
+        `UPDATE rooms
+         SET status = 'occupied',
+             available = 0
+         WHERE id = ?`,
+        [roomId]
+      )
+    }
+
+    if (roomId && status === 'cancelled') {
+      await connection.query(
+        `UPDATE rooms
+         SET status = 'available',
+             available = 1
+         WHERE id = ?`,
+        [roomId]
+      )
+    }
+
+    if (roomId && status === 'pending') {
+      await connection.query(
+        `UPDATE rooms
+         SET status = 'available',
+             available = 1
+         WHERE id = ?`,
+        [roomId]
+      )
+    }
+
+    await connection.commit()
+
+    res.json({
+      ok: true,
+      bookingId,
+      roomId,
+      status,
+    })
   } catch (error) {
-    console.error('Update booking error:', error.message)
-    res.status(500).json({ message: 'Unable to update booking' })
+    await connection.rollback()
+
+    console.error(
+      'Update booking status error:',
+      error.message
+    )
+
+    res.status(500).json({
+      message: 'Unable to update booking',
+    })
+  } finally {
+    connection.release()
   }
 })
 
@@ -336,6 +506,7 @@ app.get('/api/rooms', async (req, res) => {
   const { checkIn, checkOut } = req.query
 
   try {
+    await syncRoomStatuses()
     const [rooms] = await pool.query('SELECT * FROM rooms ORDER BY name')
     let bookedRoomIds = new Set()
 
