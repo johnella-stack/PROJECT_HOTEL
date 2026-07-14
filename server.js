@@ -29,18 +29,95 @@ const DEFAULT_ROOMS = [
   { id: '502', name: 'Executive Business Room', type: 'Executive', price: 390, status: 'available', floor: 5, last_cleaned: '2026-07-08 08:45', image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=700&h=480&fit=crop&auto=format', size: 55, capacity: 2, available: 1 },
   { id: 'PH1', name: 'Executive Penthouse', type: 'Suite', price: 580, status: 'occupied', floor: 12, last_cleaned: '2026-07-08 07:00', image: 'https://images.unsplash.com/photo-1629140727571-9b5c6f6267b4?w=700&h=480&fit=crop&auto=format', size: 90, capacity: 4, available: 0 },
 ]
+async function createTables() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      role VARCHAR(50) DEFAULT 'guest'
+    )
+  `)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rooms (
+      id VARCHAR(20) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      type VARCHAR(100) NOT NULL,
+      price DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'available',
+      floor INT DEFAULT 1,
+      last_cleaned DATETIME NULL,
+      image TEXT NULL,
+      size INT NULL,
+      capacity INT NULL,
+      available TINYINT(1) DEFAULT 1
+    )
+  `)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id VARCHAR(255) PRIMARY KEY,
+      room_id VARCHAR(20) NULL,
+      room_name VARCHAR(255) NOT NULL,
+      room_type VARCHAR(100) NOT NULL,
+      room_price DECIMAL(10, 2) NOT NULL,
+      room_image TEXT NULL,
+      check_in DATE NOT NULL,
+      check_out DATE NOT NULL,
+      guests INT NOT NULL,
+      total_price DECIMAL(10, 2) NOT NULL,
+      guest_name VARCHAR(255) NOT NULL,
+      guest_email VARCHAR(255) NOT NULL,
+      payment_method VARCHAR(100) NULL,
+      status VARCHAR(50) DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  console.log('Database tables ready')
+}
 
 async function seedRooms() {
   for (const room of DEFAULT_ROOMS) {
     await pool.query(
-      `INSERT IGNORE INTO rooms (id, name, type, price, status, floor, last_cleaned, image, size, capacity, available)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [room.id, room.name, room.type, room.price, room.status, room.floor, room.last_cleaned, room.image, room.size, room.capacity, room.available]
+      `INSERT IGNORE INTO rooms (
+        id,
+        name,
+        type,
+        price,
+        status,
+        floor,
+        last_cleaned,
+        image,
+        size,
+        capacity,
+        available
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        room.id,
+        room.name,
+        room.type,
+        room.price,
+        room.status,
+        room.floor,
+        room.last_cleaned,
+        room.image,
+        room.size,
+        room.capacity,
+        room.available
+      ]
     )
   }
-  const [rows] = await pool.query('SELECT COUNT(*) as count FROM rooms')
+
+  const [rows] = await pool.query(
+    'SELECT COUNT(*) as count FROM rooms'
+  )
+
   console.log(`Rooms in database: ${rows[0].count}`)
 }
+
 
 const mapRoom = (row, bookedForDates = false) => ({
   id: row.id,
@@ -337,14 +414,17 @@ app.put('/api/rooms/:id', async (req, res) => {
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })
-
 app.listen(port, async () => {
   try {
+    await createTables()
     await ensureBookingsSchema()
     await seedRooms()
+
+    console.log('Database initialized successfully')
   } catch (error) {
-    console.error('Room seed error:', error.message)
+    console.error('Database initialization error:', error.message)
   }
+
   console.log(`Hotel API running on http://localhost:${port}`)
-  console.log(`Connected to MySQL database: ${process.env.DB_NAME || 'hotel_db'}`)
+  console.log(`Connected to MySQL database: ${process.env.MYSQLDATABASE}`)
 })
