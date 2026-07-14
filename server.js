@@ -251,30 +251,55 @@ app.post('/api/bookings', async (req, res) => {
   const roomId = booking.room?.id
 
   if (!roomId || !booking.checkIn || !booking.checkOut) {
-    return res.status(400).json({ message: 'Room and dates are required' })
+    return res.status(400).json({
+      message: 'Room and dates are required'
+    })
   }
 
   if (booking.checkIn >= booking.checkOut) {
-    return res.status(400).json({ message: 'Check-out must be after check-in' })
+    return res.status(400).json({
+      message: 'Check-out must be after check-in'
+    })
   }
 
   try {
-    const conflict = await hasBookingConflict(roomId, booking.checkIn, booking.checkOut)
+    const conflict = await hasBookingConflict(
+      roomId,
+      booking.checkIn,
+      booking.checkOut
+    )
+
     if (conflict) {
-      return res.status(409).json({ message: 'This room is not available for the selected dates' })
+      return res.status(409).json({
+        message: 'This room is not available for the selected dates'
+      })
     }
 
     await pool.query(
       `INSERT INTO bookings (
-        id, room_id, room_name, room_type, room_price, room_image, check_in, check_out, guests, total_price, guest_name, guest_email, payment_method, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id,
+        room_id,
+        room_name,
+        room_type,
+        room_price,
+        room_image,
+        check_in,
+        check_out,
+        guests,
+        total_price,
+        guest_name,
+        guest_email,
+        payment_method,
+        status,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         booking.id,
         roomId,
         booking.room.name,
         booking.room.type,
         booking.room.price,
-        booking.room.image,
+        booking.room.image ?? null,
         booking.checkIn,
         booking.checkOut,
         booking.guests,
@@ -283,16 +308,18 @@ app.post('/api/bookings', async (req, res) => {
         booking.guestEmail,
         booking.paymentMethod,
         booking.status,
-        booking.createdAt,
       ]
     )
+
     res.status(201).json(booking)
   } catch (error) {
     console.error('Create booking error:', error.message)
-    res.status(500).json({ message: 'Unable to create booking' })
+
+    res.status(500).json({
+      message: 'Unable to create booking'
+    })
   }
 })
-
 app.put('/api/bookings/:id/status', async (req, res) => {
   const { status } = req.body
   try {
