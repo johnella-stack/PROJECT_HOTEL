@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3001'
+const API_URL = 'https://projecthotel-production.up.railway.app'
 
 const toISODateInput = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0')

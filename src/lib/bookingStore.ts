@@ -3,7 +3,7 @@ import type { Booking, Room } from '../App'
 export const BOOKING_STORAGE_KEY = 'vernay-bookings'
 export const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000
 
-const API_URL = 'https://destitute-uptight-shrank.ngrok-free.dev'
+const API_URL = 'https://projecthotel-production.up.railway.app'
 
 const DEMO_ROOM: Room = {
   id: 'demo-room',
