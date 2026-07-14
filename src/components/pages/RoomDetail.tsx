@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Wifi, Coffee, Car, Dumbbell, Wind, Tv, Users, Maximize2, Check, CreditCard, Banknote, ArrowLeft } from 'lucide-react'
 import type { Page, Room, SearchParams, User, Booking } from '../../App'
 import { addBooking } from '../../lib/bookingStore'
-import { checkRoomAvailability } from '../../lib/roomStore'
+import { formatPeso } from '../../lib/currency'
 
 interface Props {
   navigate: (p: Page) => void
@@ -57,7 +57,9 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
     if (!searchParams.checkOut) e.checkOut = 'Check-out date required'
     if (form.payment === 'card') {
       if (form.cardNumber.replace(/\s/g, '').length < 16) e.cardNumber = 'Enter a valid 16-digit card number'
-      if (!form.cardExpiry.match(/^\d{2}\/\d{2}formatPes/)) e.cardExpiry = 'Format: MM/YY'
+      if (!form.cardExpiry.match(/^\d{2}\/\d{2}$/)) {
+  e.cardExpiry = 'Format: MM/YY'
+}
       if (form.cardCvc.length < 3) e.cardCvc = 'Enter 3-digit CVC'
     }
     setErrors(e)
@@ -81,7 +83,7 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
 
     try {
       const booking: Booking = {
-        id: `VNY-formatPes{Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+        id: `VNY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
         room,
         checkIn: searchParams.checkIn,
         checkOut: searchParams.checkOut,
@@ -110,16 +112,19 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
   }
 
   const formatCard = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 16)
-    return digits.replace(/(.{4})/g, 'formatPes1 ').trim()
-  }
+  const digits = val.replace(/\D/g, '').slice(0, 16)
+  return digits.replace(/(.{4})/g, '$1 ').trim()
+}
 
   const formatExpiry = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 4)
-    if (digits.length >= 3) return `formatPes{digits.slice(0, 2)}/formatPes{digits.slice(2)}`
-    return digits
+  const digits = val.replace(/\D/g, '').slice(0, 4)
+
+  if (digits.length >= 3) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`
   }
 
+  return digits
+}
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <button
@@ -166,8 +171,8 @@ export default function RoomDetail({ navigate, room, searchParams, user, setLast
             style={{ borderColor: 'var(--border)' }}
           >
             {[
-              { icon: <Maximize2 size={15} />, label: 'Room Size', value: `formatPes{room.size}m²` },
-              { icon: <Users size={15} />, label: 'Capacity', value: `formatPes{room.capacity} guests` },
+              { icon: <Maximize2 size={15} />, label: 'Room Size', value: `${room.size}m²` },
+              { icon: <Users size={15} />, label: 'Capacity', value: `${room.capacity} guests` },
               { icon: null, label: 'Room Type', value: room.type.charAt(0).toUpperCase() + room.type.slice(1) },
               { icon: null, label: 'Bed Type', value: room.capacity > 2 ? 'Multiple' : 'King Bed' },
             ].map((spec) => (
