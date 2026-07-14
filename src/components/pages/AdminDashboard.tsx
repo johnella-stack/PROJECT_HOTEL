@@ -100,10 +100,35 @@ export default function AdminDashboard({ navigate }: Props) {
     [reservations, searchQuery]
   )
 
-  const updateStatus = (id: string, status: Booking['status']) => {
-    const nextBookings = updateBookingStatus(id, status)
+const updateStatus = async (
+  id: string,
+  status: Booking['status']
+) => {
+  try {
+    const nextBookings = await updateBookingStatus(id, status)
+
     setReservations(nextBookings)
+
+    const serverRooms = await loadRoomsFromServer()
+
+    setRooms(serverRooms)
+    persistStoredRooms(serverRooms)
+
+    window.dispatchEvent(
+      new CustomEvent('vernay-rooms-updated', {
+        detail: serverRooms,
+      })
+    )
+  } catch (error) {
+    console.error('Failed to update booking status:', error)
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Failed to update booking status'
+    )
   }
+}
 
   const updateRoomStatus = async (id: string, status: RoomItem['status']) => {
     const nextRooms = rooms.map((room) => (room.id === id ? { ...room, status, available: status === 'available' } : room))
