@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-outfit);
+  --font-mono: var(--font-dm-mono);
+}
+
+:root {
+  --background: #F6F1E9;
+  --foreground: #0A1628;
+  --card: #FFFFFF;
+  --card-foreground: #0A1628;
+  --primary: #0A1628;
+  --primary-foreground: #F6F1E9;
+  --secondary: #1C3353;
+  --secondary-foreground: #F6F1E9;
+  --muted: #E8E1D5;
+  --muted-foreground: #6B6255;
+  --accent: #B07D3A;
+  --accent-foreground: #FFFFFF;
+  --border: #D4CBBB;
+  --ring: #B07D3A;
+  --radius: 4px;
+  --font-fraunces: 'Fraunces', Georgia, serif;
+  --font-outfit: 'Outfit', system-ui, sans-serif;
+  --font-dm-mono: 'DM Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hide scrollbars until scrolling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.font-display { font-family: var(--font-fraunces); }
+.font-mono { font-family: var(--font-dm-mono); }
+
+.surface-accent-soft {
+  background-color: rgba(176, 125, 58, 0.12);
+}
+
+.surface-accent-subtle {
+  background-color: rgba(176, 125, 58, 0.06);
+}
+
+.header-surface {
+  background-color: var(--primary);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.text-muted-soft {
+  color: rgba(246, 241, 233, 0.45);
+}
+
+.accent-pill {
+  background-color: rgba(176, 125, 58, 0.2);
+  color: var(--accent);
+}
+
+.info-box {
+  background-color: rgba(176, 125, 58, 0.06);
+  border-color: rgba(176, 125, 58, 0.2);
+}
