@@ -13,14 +13,14 @@ app.use(express.json())
 app.use(express.static(path.join(__dirname, 'dist')))
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'hotel_db',
+  host: process.env.MYSQLHOST,
+  port: Number(process.env.MYSQLPORT),
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
   waitForConnections: true,
   connectionLimit: 10,
 })
-
 const DEFAULT_ROOMS = [
   { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'occupied', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 0 },
   { id: '205', name: 'Superior Twin Room', type: 'Standard', price: 210, status: 'available', floor: 2, last_cleaned: '2026-07-08 10:15', image: 'https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=700&h=480&fit=crop&auto=format', size: 32, capacity: 2, available: 1 },
