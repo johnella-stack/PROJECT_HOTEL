@@ -149,16 +149,19 @@ async function ensureBookingsSchema() {
 
 async function getBookedRoomIds(checkIn, checkOut) {
   const [rows] = await pool.query(
-    `SELECT DISTINCT COALESCE(room_id, (
-        SELECT r.id
-        FROM rooms r
-        WHERE LOWER(r.name) = LOWER(b.room_name)
-        LIMIT 1
-      )) AS room_id
+    `SELECT DISTINCT COALESCE(
+        b.room_id,
+        (
+          SELECT r.id
+          FROM rooms r
+          WHERE LOWER(r.name) = LOWER(b.room_name)
+          LIMIT 1
+        )
+      ) AS room_id
      FROM bookings b
-     WHERE status = 'confirmed'
-       AND check_in < ?
-       AND check_out > ?`,
+     WHERE b.status NOT IN ('cancelled')
+       AND b.check_in < ?
+       AND b.check_out > ?`,
     [checkOut, checkIn]
   )
 
@@ -172,18 +175,18 @@ async function getBookedRoomIds(checkIn, checkOut) {
 async function hasBookingConflict(roomId, checkIn, checkOut) {
   const [rows] = await pool.query(
     `SELECT COUNT(*) AS count
-     FROM bookings
-     WHERE status = 'confirmed'
-       AND check_in < ?
-       AND check_out > ?
+     FROM bookings b
+     WHERE b.status NOT IN ('cancelled')
+       AND b.check_in < ?
+       AND b.check_out > ?
        AND (
-         room_id = ?
+         b.room_id = ?
          OR (
-           room_id IS NULL
-           AND LOWER(room_name) = (
-             SELECT LOWER(name)
-             FROM rooms
-             WHERE id = ?
+           b.room_id IS NULL
+           AND LOWER(b.room_name) = (
+             SELECT LOWER(r.name)
+             FROM rooms r
+             WHERE r.id = ?
              LIMIT 1
            )
          )
@@ -399,35 +402,11 @@ app.put('/api/bookings/:id/status', async (req, res) => {
       [status, bookingId]
     )
 
-    if (roomId && status === 'confirmed') {
-      await connection.query(
-        `UPDATE rooms
-         SET status = 'occupied',
-             available = 0
-         WHERE id = ?`,
-        [roomId]
-      )
-    }
+   
 
-    if (roomId && status === 'cancelled') {
-      await connection.query(
-        `UPDATE rooms
-         SET status = 'available',
-             available = 1
-         WHERE id = ?`,
-        [roomId]
-      )
-    }
+  
 
-    if (roomId && status === 'pending') {
-      await connection.query(
-        `UPDATE rooms
-         SET status = 'available',
-             available = 1
-         WHERE id = ?`,
-        [roomId]
-      )
-    }
+   
 
     await connection.commit()
 
