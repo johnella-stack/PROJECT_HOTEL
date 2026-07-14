@@ -73,22 +73,56 @@ export const persistBookings = (bookings: Booking[]) => {
 }
 
 export const addBooking = async (booking: Booking) => {
-  const response = await fetch(`formatPeso{API_URL}/api/bookings`, {
+  console.log('===== CREATE BOOKING =====')
+  console.log('API URL:', `${API_URL}/api/bookings`)
+  console.log('BOOKING SENT:', booking)
+
+  const response = await fetch(`${API_URL}/api/bookings`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(booking),
   })
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to save booking' }))
-    throw new Error(error.message || 'Failed to save booking')
+  const responseText = await response.text()
+
+  console.log('BOOKING STATUS:', response.status)
+  console.log('BOOKING RESPONSE:', responseText)
+
+  let data: unknown = null
+
+  try {
+    data = JSON.parse(responseText)
+  } catch {
+    data = null
   }
 
-  const saved = (await response.json().catch(() => null)) as Booking | null
+  if (!response.ok) {
+    let errorMessage = `Failed to save booking (${response.status})`
 
-  // Ensure the booking also appears in the UI (MyBookings/AdminDashboard)
-  // which currently reads from localStorage.
-  const next = [saved ?? booking, ...loadBookings()]
+    if (data && typeof data === 'object') {
+      const errorData = data as Record<string, unknown>
+
+      if (typeof errorData.message === 'string') {
+        errorMessage = errorData.message
+      } else if (typeof errorData.error === 'string') {
+        errorMessage = errorData.error
+      }
+    } else if (responseText) {
+      errorMessage = responseText
+    }
+
+    throw new Error(errorMessage)
+  }
+
+  const saved = data as Booking | null
+
+  const next = [
+    saved ?? booking,
+    ...loadBookings(),
+  ]
+
   persistBookings(next)
 
   return saved ?? booking
@@ -97,7 +131,7 @@ export const addBooking = async (booking: Booking) => {
 
 
 export const updateBookingStatus = async (id: string, status: Booking['status']) => {
-  const response = await fetch(`formatPeso{API_URL}/api/bookings/formatPeso{id}/status`, {
+  const response = await fetch(`${API_URL}/api/bookings/${id}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
