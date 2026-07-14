@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import type { Page, User } from '../../App'
 
-interface StoredUser {
-  name: string
-  email: string
-  password: string
-  role: 'guest' | 'admin'
-}
 
 interface Props {
   navigate: (p: Page) => void
@@ -25,21 +19,9 @@ export default function Auth({ navigate, setUser, onAuthSuccess }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
-  const loadUsers = (): StoredUser[] => {
-    try {
-      const saved = localStorage.getItem('vernay-users')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  }
-
-  const saveUsers = (users: StoredUser[]) => {
-    localStorage.setItem('vernay-users', JSON.stringify(users))
-  }
 
   const authenticateWithServer = async (payload: { email: string; password: string; name?: string; role?: 'guest' | 'admin' }) => {
-    const response = await fetch('http://localhost:3001/api/login', {
+    const response = await fetch('https://projecthotel-production.up.railway.app/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -66,7 +48,7 @@ export default function Auth({ navigate, setUser, onAuthSuccess }: Props) {
     if (mode === 'register') {
       setLoading(true)
       try {
-        const response = await fetch('http://localhost:3001/api/register', {
+        const response = await fetch('https://projecthotel-production.up.railway.app/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -90,8 +72,7 @@ export default function Auth({ navigate, setUser, onAuthSuccess }: Props) {
           email: data.email,
           role: data.role,
         } as User
-        const users = loadUsers()
-        saveUsers([...users, { name: data.name, email: data.email, password: form.password, role: data.role }])
+        
         setUser(authenticatedUser)
         setLoading(false)
         onAuthSuccess(authenticatedUser)

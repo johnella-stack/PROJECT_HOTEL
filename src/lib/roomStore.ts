@@ -17,7 +17,7 @@ export interface RoomRecord {
   bookedForDates?: boolean
 }
 
-const API_URL = 'http://localhost:3001'
+const API_URL = 'https://projecthotel-production.up.railway.app'
 
 const fallbackImage = (name: string, type: string) => {
   const normalizedName = name.toLowerCase()
