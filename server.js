@@ -600,6 +600,24 @@ app.put('/api/bookings/:id/status', async (req, res) => {
     connection.release()
   }
 })
+const getManilaDateTime = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  )
+
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`
+}
 const getManilaDate = () => {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila',
@@ -612,7 +630,7 @@ const syncAutomaticRoomStatuses = async () => {
   const today = getManilaDate()
 
   try {
-    // Active confirmed stay -> OCCUPIED
+    // 1. ACTIVE CONFIRMED STAY -> OCCUPIED
     await pool.query(
       `
       UPDATE rooms r
@@ -632,7 +650,8 @@ const syncAutomaticRoomStatuses = async () => {
       [today, today]
     )
 
-    // Checkout reached and room still needs cleaning -> CLEANING
+    // 2. FINISHED STAY -> CLEANING
+    // Only if the room has NOT been cleaned after checkout
     await pool.query(
       `
       UPDATE rooms r
@@ -640,6 +659,8 @@ const syncAutomaticRoomStatuses = async () => {
         r.status = 'cleaning',
         r.available = 0
       WHERE r.status != 'maintenance'
+        AND r.status != 'occupied'
+
         AND NOT EXISTS (
           SELECT 1
           FROM bookings active_booking
@@ -648,15 +669,17 @@ const syncAutomaticRoomStatuses = async () => {
             AND DATE(?) >= DATE(active_booking.check_in)
             AND DATE(?) < DATE(active_booking.check_out)
         )
+
         AND EXISTS (
           SELECT 1
           FROM bookings b
           WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
             AND b.status = 'confirmed'
             AND DATE(?) >= DATE(b.check_out)
+
             AND (
               r.last_cleaned IS NULL
-              OR r.last_cleaned < b.check_out
+              OR DATE(r.last_cleaned) < DATE(b.check_out)
             )
         )
       `,
@@ -785,18 +808,25 @@ app.put('/api/rooms/:id', async (req, res) => {
     const current = mapRoom(existing[0])
     const merged = { ...current, ...updates }
 
-    let lastCleaned = merged.lastCleaned
+      let lastCleaned = merged.lastCleaned
 
-    if (lastCleaned) {
-      const cleanedDate = new Date(lastCleaned)
+const isMarkingAsCleaned =
+  updates.status === 'available' &&
+  updates.available === true &&
+  updates.lastCleaned
 
-      if (!Number.isNaN(cleanedDate.getTime())) {
-        lastCleaned = cleanedDate
-          .toISOString()
-          .slice(0, 19)
-          .replace('T', ' ')
-      }
-    }
+if (isMarkingAsCleaned) {
+  lastCleaned = getManilaDateTime()
+} else if (lastCleaned) {
+  const cleanedDate = new Date(lastCleaned)
+
+  if (!Number.isNaN(cleanedDate.getTime())) {
+    lastCleaned = cleanedDate
+      .toISOString()
+      .slice(0, 19)
+      .replace('T', ' ')
+  }
+}
 
     await pool.query(
       `UPDATE rooms

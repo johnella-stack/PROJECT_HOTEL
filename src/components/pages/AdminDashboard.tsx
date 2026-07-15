@@ -313,39 +313,24 @@ const updateStatus = async (
     )
   }
 }
-const markRoomAsCleaned = async (id: string) => {
+
+const markRoomAsCleaned = async (roomId: string) => {
   try {
     const cleanedAt = new Date().toISOString()
 
-    const updatedRoom = await updateRoomInServer(id, {
+    const updatedRoom = await updateRoomInServer(roomId, {
       status: 'available',
-      lastCleaned: cleanedAt,
       available: true,
+      lastCleaned: cleanedAt,
     })
 
-    setRooms((currentRooms) => {
-      const nextRooms = currentRooms.map((room) =>
-        room.id === id
-          ? {
-              ...room,
-              ...updatedRoom,
-            }
-          : room
+    setRooms((currentRooms) =>
+      currentRooms.map((room) =>
+        room.id === roomId ? updatedRoom : room
       )
-
-      persistStoredRooms(nextRooms)
-
-      window.dispatchEvent(
-        new CustomEvent('vernay-rooms-updated', {
-          detail: nextRooms,
-        })
-      )
-
-      return nextRooms
-    })
+    )
   } catch (error) {
     console.error('Mark room as cleaned error:', error)
-
     alert('Unable to mark room as cleaned.')
   }
 }
