@@ -353,7 +353,7 @@ const updateStatus = async (
   ]
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 overflow-x-hidden">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-5 sm:py-10 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
@@ -851,7 +851,7 @@ const updateStatus = async (
       {activeTab === 'guests' && (
         <div className="space-y-6">
           <div
-  className="border p-4 sm:p-6"
+ className="w-full min-w-0 border p-3 sm:p-6 overflow-hidden"
   style={{
     backgroundColor: 'var(--card)',
     borderColor: 'var(--border)',
@@ -879,7 +879,7 @@ const updateStatus = async (
 
   <form
     onSubmit={handleWalkInCreate}
-    className="space-y-5"
+    className="w-full min-w-0 space-y-4 sm:space-y-5"
   >
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="min-w-0">
@@ -900,7 +900,7 @@ const updateStatus = async (
               guestName: e.target.value,
             })
           }
-          className="w-full min-w-0 px-4 py-3 text-sm border"
+          className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
           style={{
             borderColor: 'var(--border)',
             backgroundColor: 'transparent',
@@ -928,7 +928,7 @@ const updateStatus = async (
               guestEmail: e.target.value,
             })
           }
-          className="w-full min-w-0 px-4 py-3 text-sm border"
+          className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
           style={{
             borderColor: 'var(--border)',
             backgroundColor: 'transparent',
@@ -963,7 +963,7 @@ const updateStatus = async (
             ),
           })
         }}
-        className="w-full min-w-0 px-4 py-3 text-sm border"
+        className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
         style={{
           borderColor: 'var(--border)',
           backgroundColor: 'var(--card)',
@@ -1041,7 +1041,7 @@ const updateStatus = async (
               checkIn: e.target.value,
             })
           }
-          className="w-full min-w-0 px-4 py-3 text-sm border"
+          className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
           style={{
             borderColor: 'var(--border)',
             backgroundColor: 'transparent',
@@ -1069,7 +1069,7 @@ const updateStatus = async (
               checkOut: e.target.value,
             })
           }
-          className="w-full min-w-0 px-4 py-3 text-sm border"
+          className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
           style={{
             borderColor: 'var(--border)',
             backgroundColor: 'transparent',
@@ -1099,7 +1099,7 @@ const updateStatus = async (
             guests: Number(e.target.value),
           })
         }
-        className="w-full min-w-0 px-4 py-3 text-sm border"
+        className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
         style={{
           borderColor: 'var(--border)',
           backgroundColor: 'transparent',
@@ -1168,10 +1168,14 @@ const updateStatus = async (
   </form>
 </div>
           <div
-            className="border overflow-hidden"
-            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
-          >
-            <table className="w-full text-sm">
+  className="w-full min-w-0 border overflow-x-auto"
+  style={{
+    backgroundColor: 'var(--card)',
+    borderColor: 'var(--border)',
+    WebkitOverflowScrolling: 'touch',
+  }}
+>
+  <table className="w-full min-w-[700px] text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--muted)' }}>
                 {['Guest', 'Email', 'Bookings', 'Total Spent', 'Last Stay'].map((h) => (
