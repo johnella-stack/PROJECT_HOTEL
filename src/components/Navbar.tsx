@@ -77,8 +77,70 @@ interface Props {
 
 export default function Navbar({ page, navigate, user, setUser }: Props) {
   const [open, setOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const handleSignOut = () => {
+  setIsSigningOut(true)
+  setOpen(false)
+
+  setTimeout(() => {
+    setUser(null)
+    navigate('home')
+
+    setTimeout(() => {
+      setIsSigningOut(false)
+    }, 400)
+  }, 1200)
+}
 
   return (
+    <>
+  {isSigningOut && (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center signout-overlay">
+      <div className="text-center signout-content">
+        <div
+          className="w-16 h-16 mx-auto mb-6 flex items-center justify-center text-xl font-bold tracking-widest signout-logo"
+          style={{
+            backgroundColor: 'var(--accent)',
+            color: '#fff',
+            fontFamily: 'var(--font-outfit)',
+          }}
+        >
+          V
+        </div>
+
+        <h2
+          className="font-display italic text-3xl mb-2"
+          style={{ color: '#f6f1e9' }}
+        >
+          Vernay
+        </h2>
+
+        <p
+          className="text-xs tracking-[0.5em] uppercase mb-8"
+          style={{ color: 'rgba(246,241,233,0.5)' }}
+        >
+          Hotels
+        </p>
+
+        <div className="signout-line mx-auto mb-6" />
+
+        <p
+          className="text-sm tracking-[0.25em] uppercase"
+          style={{ color: 'rgba(246,241,233,0.75)' }}
+        >
+          Signing you out...
+        </p>
+
+        <p
+          className="text-xs mt-3"
+          style={{ color: 'rgba(246,241,233,0.4)' }}
+        >
+          Thank you for visiting Vernay
+        </p>
+      </div>
+    </div>
+  )}
+
     <nav
       className="sticky top-0 z-50 border-b"
       style={{
@@ -117,83 +179,95 @@ export default function Navbar({ page, navigate, user, setUser }: Props) {
         </button>
 
       {/* Desktop nav */}
-      <div className="hidden md:flex items-center gap-8">
+<div className="hidden md:flex items-center gap-8">
+  {user?.role === 'admin' ? (
+    <>
+      <button
+        onClick={() => navigate('admin')}
+        className="flex items-center gap-2 text-sm"
+        style={{ color: 'var(--accent)' }}
+      >
+        <LayoutDashboard size={15} />
+        <span className="tracking-wider uppercase">
+          Admin
+        </span>
+      </button>
 
-          {[
-            { label: 'Rooms', page: 'search' as Page },
-            { label: 'About', page: 'home' as Page },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.page)}
-              className="text-sm tracking-wider uppercase transition-colors duration-200"
-              style={{
-                color:
-                  page === item.page
-                    ? 'var(--accent)'
-                    : 'rgba(246,241,233,0.6)',
-                fontFamily: 'var(--font-outfit)',
-              }}
-              onMouseEnter={(e) =>
-                ((e.target as HTMLElement).style.color = 'var(--accent)')
-              }
-              onMouseLeave={(e) =>
-                ((e.target as HTMLElement).style.color =
-                  page === item.page
-                    ? 'var(--accent)'
-                    : 'rgba(246,241,233,0.6)')
-              }
-            >
-              {item.label}
-            </button>
-          ))}
-          {user ? (
-            <div className="flex items-center gap-4">
-              {user.role === 'admin' && (
-                <button
-                  onClick={() => navigate('admin')}
-                  className="flex items-center gap-2 text-sm"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  <LayoutDashboard size={15} />
-                  <span className="tracking-wider uppercase">Admin</span>
-                </button>
-              )}
-              <button
-                onClick={() => navigate('my-bookings')}
-                className="flex items-center gap-2 text-sm"
-                style={{ color: 'rgba(246,241,233,0.8)' }}
-              >
-                <CalendarCheck size={15} />
-                <span className="tracking-wider uppercase">My bookings</span>
-              </button>
-              <span
-                className="text-sm"
-                style={{ color: 'rgba(246,241,233,0.5)' }}
-              >
-                {user.name}
-              </span>
-              <SignOutButton
-                variant="desktop"
-                onConfirm={() => {
-                  setUser(null)
-                }}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate('auth')}
-              className="text-sm tracking-wider uppercase px-5 py-2 transition-all duration-200"
-              style={{
-                backgroundColor: 'var(--accent)',
-                color: '#fff',
-                fontFamily: 'var(--font-outfit)',
-              }}
-            >
-              Sign In
-            </button>
-          )}
+      <SignOutButton
+        variant="desktop"
+        onConfirm={() => {
+          setUser(null)
+        }}
+      />
+    </>
+  ) : (
+    <>
+      {[
+        { label: 'Rooms', page: 'search' as Page },
+        { label: 'About', page: 'home' as Page },
+      ].map((item) => (
+        <button
+          key={item.label}
+          onClick={() => navigate(item.page)}
+          className="text-sm tracking-wider uppercase transition-colors duration-200"
+          style={{
+            color:
+              page === item.page
+                ? 'var(--accent)'
+                : 'rgba(246,241,233,0.6)',
+            fontFamily: 'var(--font-outfit)',
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
+
+      {user ? (
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('my-bookings')}
+            className="flex items-center gap-2 text-sm"
+            style={{
+              color: 'rgba(246,241,233,0.8)',
+            }}
+          >
+            <CalendarCheck size={15} />
+
+            <span className="tracking-wider uppercase">
+              My bookings
+            </span>
+          </button>
+
+          <span
+            className="text-sm"
+            style={{
+              color: 'rgba(246,241,233,0.5)',
+            }}
+          >
+            {user.name}
+          </span>
+
+          <SignOutButton
+  variant="desktop"
+  onConfirm={handleSignOut}
+/>
         </div>
+      ) : (
+        <button
+          onClick={() => navigate('auth')}
+          className="text-sm tracking-wider uppercase px-5 py-2"
+          style={{
+            backgroundColor: 'var(--accent)',
+            color: '#fff',
+            fontFamily: 'var(--font-outfit)',
+          }}
+        >
+          Sign In
+        </button>
+      )}
+    </>
+  )}
+</div>
 
         {/* Mobile toggle */}
         <button
@@ -259,5 +333,6 @@ export default function Navbar({ page, navigate, user, setUser }: Props) {
         </div>
       )}
     </nav>
+</>
   )
 }
