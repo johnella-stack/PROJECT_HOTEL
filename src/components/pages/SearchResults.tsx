@@ -100,7 +100,7 @@ const FEATURE_ICONS: Record<string, React.ReactNode> = {
 }
 
 export default function SearchResults({ navigate, searchParams, setSearchParams, setSelectedRoom, setPendingRoom, user }: Props) {
-  const [maxPrice, setMaxPrice] = useState(700)
+  const [maxPrice, setMaxPrice] = useState(20000)
   const [filterAvail, setFilterAvail] = useState(false)
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'size'>('price_asc')
   const [showFilters, setShowFilters] = useState(false)
@@ -295,16 +295,17 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
                 className="block text-xs tracking-widests uppercase mb-2"
                 style={{ color: 'var(--muted-foreground)' }}
               >
-                Max price: €{maxPrice}/night
+                Max price: {formatPeso(maxPrice)}/night
               </label>
-              <input
+             <input
                 type="range"
-                min={100}
-                max={700}
+                min={500}
+                max={20000}
+                step={500}
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
                 className="w-full accent-amber-700"
-              />
+               />
             </div>
             <div className="flex items-center gap-3">
               <input
