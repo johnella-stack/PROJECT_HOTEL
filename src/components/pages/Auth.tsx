@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import type { Page, User } from '../../App'
 
 
@@ -16,8 +17,11 @@ export default function Auth({ navigate, setUser, onAuthSuccess }: Props) {
     password: '',
     confirm: '',
   })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(false)
+const [errors, setErrors] = useState<Record<string, string>>({})
+const [loading, setLoading] = useState(false)
+const [agreedToTerms, setAgreedToTerms] = useState(false)
+const [showPassword, setShowPassword] = useState(false)
+const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
 
   const authenticateWithServer = async (payload: { email: string; password: string; name?: string; role?: 'guest' | 'admin' }) => {
@@ -30,14 +34,36 @@ export default function Auth({ navigate, setUser, onAuthSuccess }: Props) {
   }
 
   const validate = () => {
-    const e: Record<string, string> = {}
-    if (mode === 'register' && !form.name.trim()) e.name = 'Full name is required'
-    if (!form.email.includes('@')) e.email = 'Enter a valid email address'
-    if (form.password.length < 6) e.password = 'Password must be at least 6 characters'
-    if (mode === 'register' && form.password !== form.confirm) e.confirm = 'Passwords do not match'
-    setErrors(e)
-    return Object.keys(e).length === 0
+  const e: Record<string, string> = {}
+
+  if (mode === 'register' && !form.name.trim()) {
+    e.name = 'Full name is required'
   }
+
+  if (!form.email.includes('@')) {
+    e.email = 'Enter a valid email address'
+  }
+
+  if (form.password.length < 6) {
+    e.password = 'Password must be at least 6 characters'
+  }
+
+  if (
+    mode === 'register' &&
+    form.password !== form.confirm
+  ) {
+    e.confirm = 'Passwords do not match'
+  }
+
+  if (mode === 'register' && !agreedToTerms) {
+    e.terms =
+      'You must agree to the Terms and Conditions and Privacy Policy.'
+  }
+
+  setErrors(e)
+
+  return Object.keys(e).length === 0
+}
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -226,39 +252,191 @@ export default function Auth({ navigate, setUser, onAuthSuccess }: Props) {
               {errors.email && <p className="text-xs mt-1" style={{ color: '#dc2626' }}>{errors.email}</p>}
             </div>
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                Password
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full px-3 py-2.5 text-sm border rounded"
-                style={{ borderColor: errors.password ? '#dc2626' : 'var(--border)', outline: 'none', backgroundColor: 'transparent' }}
-              />
-              {errors.password && <p className="text-xs mt-1" style={{ color: '#dc2626' }}>{errors.password}</p>}
-            </div>
+  <label
+    className="block text-xs mb-1.5"
+    style={{ color: 'var(--muted-foreground)' }}
+  >
+    Password
+  </label>
+
+  <div className="relative">
+    <input
+      type={showPassword ? 'text' : 'password'}
+      placeholder="••••••••"
+      value={form.password}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          password: e.target.value,
+        })
+      }
+      className="w-full px-3 py-2.5 pr-11 text-sm border rounded"
+      style={{
+        borderColor: errors.password
+          ? '#dc2626'
+          : 'var(--border)',
+        outline: 'none',
+        backgroundColor: 'transparent',
+      }}
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword((current) => !current)}
+      className="absolute inset-y-0 right-0 flex items-center justify-center w-11 transition-opacity hover:opacity-70"
+      style={{ color: 'var(--muted-foreground)' }}
+      aria-label={
+        showPassword
+          ? 'Hide password'
+          : 'Show password'
+      }
+    >
+      {showPassword ? (
+        <EyeOff size={18} />
+      ) : (
+        <Eye size={18} />
+      )}
+    </button>
+  </div>
+
+  {errors.password && (
+    <p
+      className="text-xs mt-1"
+      style={{ color: '#dc2626' }}
+    >
+      {errors.password}
+    </p>
+  )}
+</div>
             {mode === 'register' && (
-              <div>
-                <label className="block text-xs mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={form.confirm}
-                  onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-                  className="w-full px-3 py-2.5 text-sm border rounded"
-                  style={{ borderColor: errors.confirm ? '#dc2626' : 'var(--border)', outline: 'none', backgroundColor: 'transparent' }}
-                />
-                {errors.confirm && <p className="text-xs mt-1" style={{ color: '#dc2626' }}>{errors.confirm}</p>}
-              </div>
-            )}
+  <div>
+    <label
+      className="block text-xs mb-1.5"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Confirm Password
+    </label>
+
+    <div className="relative">
+      <input
+        type={
+          showConfirmPassword
+            ? 'text'
+            : 'password'
+        }
+        placeholder="••••••••"
+        value={form.confirm}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            confirm: e.target.value,
+          })
+        }
+        className="w-full px-3 py-2.5 pr-11 text-sm border rounded"
+        style={{
+          borderColor: errors.confirm
+            ? '#dc2626'
+            : 'var(--border)',
+          outline: 'none',
+          backgroundColor: 'transparent',
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={() =>
+          setShowConfirmPassword(
+            (current) => !current
+          )
+        }
+        className="absolute inset-y-0 right-0 flex items-center justify-center w-11 transition-opacity hover:opacity-70"
+        style={{ color: 'var(--muted-foreground)' }}
+        aria-label={
+          showConfirmPassword
+            ? 'Hide confirm password'
+            : 'Show confirm password'
+        }
+      >
+        {showConfirmPassword ? (
+          <EyeOff size={18} />
+        ) : (
+          <Eye size={18} />
+        )}
+      </button>
+    </div>
+
+    {errors.confirm && (
+      <p
+        className="text-xs mt-1"
+        style={{ color: '#dc2626' }}
+      >
+        {errors.confirm}
+      </p>
+    )}
+  </div>
+)}
+            {mode === 'register' && (
+  <div>
+    <label className="flex items-start gap-3 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={agreedToTerms}
+        onChange={(e) => {
+          setAgreedToTerms(e.target.checked)
+
+          if (e.target.checked) {
+            setErrors((current) => {
+              const next = { ...current }
+              delete next.terms
+              return next
+            })
+          }
+        }}
+        className="mt-1 h-4 w-4 shrink-0"
+        style={{ accentColor: 'var(--accent)' }}
+      />
+
+      <span
+        className="text-xs leading-relaxed"
+        style={{ color: 'var(--muted-foreground)' }}
+      >
+        I have read and agree to the{' '}
+        <button
+          type="button"
+          className="underline font-medium"
+          style={{ color: 'var(--accent)' }}
+        >
+          Terms and Conditions
+        </button>{' '}
+        and{' '}
+        <button
+          type="button"
+          className="underline font-medium"
+          style={{ color: 'var(--accent)' }}
+        >
+          Privacy Policy
+        </button>
+        .
+      </span>
+    </label>
+
+    {errors.terms && (
+      <p
+        className="text-xs mt-1"
+        style={{ color: '#dc2626' }}
+      >
+        {errors.terms}
+      </p>
+    )}
+  </div>
+)}
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 text-sm tracking-widests uppercase font-medium mt-2 transition-opacity hover:opacity-85 disabled:opacity-50"
+  type="submit"
+  disabled={
+    loading ||
+    (mode === 'register' && !agreedToTerms)
+  }
+  className="w-full py-3 text-sm tracking-widests uppercase font-medium mt-2 transition-opacity hover:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
             >
               {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
