@@ -1,4 +1,4 @@
-import type { Booking, Room } from '../App'
+import type { Booking } from '../App'
 
 export const BOOKING_STORAGE_KEY = 'vernay-bookings'
 export const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -66,62 +66,29 @@ export const loadBookingsFromServer = async (): Promise<Booking[]> => {
   return bookings
 }
 
-const DEMO_ROOM: Room = {
-  id: 'demo-room',
-  name: 'Deluxe King Suite',
-  type: 'deluxe',
-  price: 320,
-  size: 45,
-  capacity: 2,
-  available: true,
-  image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=700&h=480&fit=crop&auto=format',
-  features: ['WiFi', 'TV', 'Air Conditioning', 'Coffee Maker', 'City View'],
-  description: 'A beautifully appointed suite with city views and premium amenities.',
-}
 
-const DEMO_BOOKINGS: Booking[] = [
-  {
-    id: 'VNY-DEMO01',
-    room: DEMO_ROOM,
-    checkIn: '2026-07-10',
-    checkOut: '2026-07-12',
-    guests: 2,
-    totalPrice: 704,
-    guestName: 'Mina Rossi',
-    guestEmail: 'mina@example.com',
-    paymentMethod: 'card',
-    status: 'confirmed',
-    createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'VNY-DEMO02',
-    room: { ...DEMO_ROOM, id: 'demo-room-2', name: 'Classic Double Room', price: 189 },
-    checkIn: '2026-07-14',
-    checkOut: '2026-07-16',
-    guests: 2,
-    totalPrice: 415,
-    guestName: 'Luca Moreau',
-    guestEmail: 'luca@example.com',
-    paymentMethod: 'cash',
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  },
-]
+
+
 
 export const loadBookings = (): Booking[] => {
   if (typeof window === 'undefined') return []
 
   try {
-    const stored = window.localStorage.getItem(BOOKING_STORAGE_KEY)
+    const stored = window.localStorage.getItem(
+      BOOKING_STORAGE_KEY
+    )
+
     if (!stored) {
-      persistBookings(DEMO_BOOKINGS)
-      return DEMO_BOOKINGS
+      return []
     }
 
     const parsed = JSON.parse(stored) as Booking[]
-    if (!Array.isArray(parsed)) return []
 
-    return parsed as Booking[]
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    return parsed
   } catch {
     return []
   }

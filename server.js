@@ -542,12 +542,63 @@ app.put('/api/bookings/:id/status', async (req, res) => {
     connection.release()
   }
 })
+const syncAutomaticRoomStatuses = async () => {
+  try {
+    // Active confirmed stay -> OCCUPIED
+    await pool.query(`
+      UPDATE rooms r
+      SET r.status = 'occupied'
+      WHERE r.status != 'maintenance'
+        AND EXISTS (
+          SELECT 1
+          FROM bookings b
+          WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
+            AND b.status = 'confirmed'
+            AND CURDATE() >= DATE(b.check_in)
+            AND CURDATE() < DATE(b.check_out)
+        )
+    `)
+
+    // Checkout reached and not cleaned after checkout -> CLEANING
+    await pool.query(`
+      UPDATE rooms r
+      SET r.status = 'cleaning'
+      WHERE r.status != 'maintenance'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM bookings active_booking
+          WHERE CAST(active_booking.room_id AS CHAR) = CAST(r.id AS CHAR)
+            AND active_booking.status = 'confirmed'
+            AND CURDATE() >= DATE(active_booking.check_in)
+            AND CURDATE() < DATE(active_booking.check_out)
+        )
+        AND EXISTS (
+          SELECT 1
+          FROM bookings b
+          WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
+            AND b.status = 'confirmed'
+            AND CURDATE() >= DATE(b.check_out)
+            AND (
+              r.last_cleaned IS NULL
+              OR r.last_cleaned < b.check_out
+            )
+        )
+    `)
+
+    console.log('Automatic room statuses synchronized')
+  } catch (error) {
+    console.error(
+      'Automatic room status sync error:',
+      error.message
+    )
+  }
+}
 
 app.get('/api/rooms', async (req, res) => {
   const { checkIn, checkOut } = req.query
 
   try {
-   
+   await syncAutomaticRoomStatuses()
     const [rooms] = await pool.query('SELECT * FROM rooms ORDER BY name')
     let bookedRoomIds = new Set()
 
@@ -637,15 +688,47 @@ app.post('/api/rooms', async (req, res) => {
 
 app.put('/api/rooms/:id', async (req, res) => {
   const updates = req.body
+
   try {
-    const [existing] = await pool.query('SELECT * FROM rooms WHERE id = ?', [req.params.id])
-    if (!existing.length) return res.status(404).json({ message: 'Room not found' })
+    const [existing] = await pool.query(
+      'SELECT * FROM rooms WHERE id = ?',
+      [req.params.id]
+    )
+
+    if (!existing.length) {
+      return res.status(404).json({
+        message: 'Room not found',
+      })
+    }
 
     const current = mapRoom(existing[0])
     const merged = { ...current, ...updates }
 
+    let lastCleaned = merged.lastCleaned
+
+    if (lastCleaned) {
+      const cleanedDate = new Date(lastCleaned)
+
+      if (!Number.isNaN(cleanedDate.getTime())) {
+        lastCleaned = cleanedDate
+          .toISOString()
+          .slice(0, 19)
+          .replace('T', ' ')
+      }
+    }
+
     await pool.query(
-      `UPDATE rooms SET name = ?, type = ?, price = ?, status = ?, floor = ?, last_cleaned = ?, image = ?, size = ?, capacity = ?, available = ?
+      `UPDATE rooms
+       SET name = ?,
+           type = ?,
+           price = ?,
+           status = ?,
+           floor = ?,
+           last_cleaned = ?,
+           image = ?,
+           size = ?,
+           capacity = ?,
+           available = ?
        WHERE id = ?`,
       [
         merged.name,
@@ -653,7 +736,7 @@ app.put('/api/rooms/:id', async (req, res) => {
         merged.price,
         merged.status,
         merged.floor,
-        merged.lastCleaned,
+        lastCleaned ?? null,
         merged.image ?? null,
         merged.size ?? null,
         merged.capacity ?? null,
@@ -661,10 +744,20 @@ app.put('/api/rooms/:id', async (req, res) => {
         req.params.id,
       ]
     )
-    res.json(merged)
+
+    const [updatedRows] = await pool.query(
+      'SELECT * FROM rooms WHERE id = ?',
+      [req.params.id]
+    )
+
+    res.json(mapRoom(updatedRows[0]))
   } catch (error) {
-    console.error('Update room error:', error.message)
-    res.status(500).json({ message: 'Unable to update room' })
+    console.error('Update room error:', error)
+
+    res.status(500).json({
+      message: 'Unable to update room',
+      error: error.message,
+    })
   }
 })
 

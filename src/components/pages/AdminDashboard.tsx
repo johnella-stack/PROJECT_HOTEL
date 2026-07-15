@@ -35,10 +35,27 @@ const STATUS_CONFIG = {
 }
 
 const ROOM_STATUS_CONFIG = {
-  available: { color: '#16a34a', bg: 'rgba(22,163,74,0.08)', label: 'Available' },
-  occupied: { color: 'var(--accent)', bg: 'rgba(176,125,58,0.08)', label: 'Occupied' },
-  maintenance: { color: '#dc2626', bg: 'rgba(220,38,38,0.08)', label: 'Maintenance' },
-}
+  available: {
+    color: '#16a34a',
+    bg: 'rgba(22,163,74,0.08)',
+    label: 'Available',
+  },
+  occupied: {
+    color: 'var(--accent)',
+    bg: 'rgba(176,125,58,0.08)',
+    label: 'Occupied',
+  },
+  cleaning: {
+    color: '#2563eb',
+    bg: 'rgba(37,99,235,0.08)',
+    label: 'Cleaning',
+  },
+  maintenance: {
+    color: '#dc2626',
+    bg: 'rgba(220,38,38,0.08)',
+    label: 'Maintenance',
+  },
+} as const
 
 export default function AdminDashboard({ navigate }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
@@ -244,6 +261,7 @@ const updateStatus = async (
 }
 
   const updateRoomStatus = async (id: string, status: RoomItem['status']) => {
+   
     const nextRooms = rooms.map((room) => (room.id === id ? { ...room, status, available: status === 'available' } : room))
     setRooms(nextRooms)
     try {
@@ -293,6 +311,42 @@ const updateStatus = async (
         ? error.message
         : 'Failed to create room'
     )
+  }
+}
+const markRoomAsCleaned = async (id: string) => {
+  try {
+    const cleanedAt = new Date().toISOString()
+
+    const updatedRoom = await updateRoomInServer(id, {
+      status: 'available',
+      lastCleaned: cleanedAt,
+      available: true,
+    })
+
+    setRooms((currentRooms) => {
+      const nextRooms = currentRooms.map((room) =>
+        room.id === id
+          ? {
+              ...room,
+              ...updatedRoom,
+            }
+          : room
+      )
+
+      persistStoredRooms(nextRooms)
+
+      window.dispatchEvent(
+        new CustomEvent('vernay-rooms-updated', {
+          detail: nextRooms,
+        })
+      )
+
+      return nextRooms
+    })
+  } catch (error) {
+    console.error('Mark room as cleaned error:', error)
+
+    alert('Unable to mark room as cleaned.')
   }
 }
 
@@ -633,7 +687,7 @@ setReservations(serverBookings)
             className="border overflow-hidden"
             style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
           >
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
                <table className="w-full min-w-[700px] text-sm">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--muted)' }}>
@@ -667,7 +721,7 @@ setReservations(serverBookings)
                           <p className="font-medium">{r.guestName}</p>
                           <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.guestEmail}</p>
                         </td>
-                        <td className="px-5 py-3" style={{ color: 'var(--muted-foreground)' }}>{r.room.name}</td>
+                        <td className="px-5 py-3" style={{ color: 'var(--muted-foreground)' }}>{r.room?.name ?? 'Unknown Room'}</td>
                         <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{r.checkIn}</td>
                         <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{r.checkOut}</td>
                         <td className="px-5 py-3 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatPeso(r.totalPrice)}</td>
@@ -697,8 +751,206 @@ setReservations(serverBookings)
                 </tbody>
               </table>
             </div>
+            {/* MOBILE RESERVATION CARDS */}
+<div className="md:hidden divide-y" style={{ borderColor: 'var(--border)' }}>
+  {filteredRes.length === 0 ? (
+    <div className="px-5 py-10 text-center">
+      <p
+        className="text-sm"
+        style={{ color: 'var(--muted-foreground)' }}
+      >
+        No reservations found.
+      </p>
+    </div>
+  ) : (
+    filteredRes.map((r) => {
+      const s = STATUS_CONFIG[r.status]
+
+      return (
+        <div
+          key={r.id}
+          className="p-4"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          {/* ID + STATUS */}
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="min-w-0">
+              <p
+                className="text-[10px] tracking-[0.2em] uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Booking ID
+              </p>
+
+              <p
+                className="font-mono text-xs break-all"
+                style={{
+                  fontFamily: 'var(--font-dm-mono)',
+                  color: 'var(--accent)',
+                }}
+              >
+                {r.id}
+              </p>
+            </div>
+
+            <span
+              className="shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-1"
+              style={{
+                backgroundColor: s.bg,
+                color: s.color,
+              }}
+            >
+              {s.icon}
+              {s.label}
+            </span>
+          </div>
+
+          {/* GUEST */}
+          <div className="mb-4">
+            <p className="font-medium text-base">
+              {r.guestName || 'Unknown Guest'}
+            </p>
+
+            <p
+              className="text-xs mt-1 break-all"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              {r.guestEmail || 'No email provided'}
+            </p>
+          </div>
+
+          {/* DETAILS */}
+          <div
+            className="grid grid-cols-2 gap-x-4 gap-y-4 py-4 border-y"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <div>
+              <p
+                className="text-[10px] tracking-wider uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Room
+              </p>
+
+              <p className="text-sm font-medium">
+                {r.room?.name ?? 'Unknown Room'}
+              </p>
+            </div>
+
+            <div>
+              <p
+                className="text-[10px] tracking-wider uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Guests
+              </p>
+
+              <p className="text-sm font-medium">
+                {r.guests} guest{r.guests !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            <div>
+              <p
+                className="text-[10px] tracking-wider uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Check-In
+              </p>
+
+              <p
+                className="text-xs"
+                style={{ fontFamily: 'var(--font-dm-mono)' }}
+              >
+                {r.checkIn}
+              </p>
+            </div>
+
+            <div>
+              <p
+                className="text-[10px] tracking-wider uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Check-Out
+              </p>
+
+              <p
+                className="text-xs"
+                style={{ fontFamily: 'var(--font-dm-mono)' }}
+              >
+                {r.checkOut}
+              </p>
+            </div>
+
+            <div>
+              <p
+                className="text-[10px] tracking-wider uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Payment
+              </p>
+
+              <p className="text-sm capitalize">
+                {r.paymentMethod === 'card'
+                  ? 'Card'
+                  : 'Pay at hotel'}
+              </p>
+            </div>
+
+            <div>
+              <p
+                className="text-[10px] tracking-wider uppercase mb-1"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                Total
+              </p>
+
+              <p
+                className="text-sm font-semibold"
+                style={{ color: 'var(--accent)' }}
+              >
+                {formatPeso(r.totalPrice)}
+              </p>
+            </div>
+          </div>
+
+          {/* ACTION */}
+          <div className="pt-4">
+            <label
+              className="block text-[10px] tracking-[0.2em] uppercase mb-2"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              Update Reservation Status
+            </label>
+
+            <select
+              value={r.status}
+              onChange={(e) =>
+                updateStatus(
+                  r.id,
+                  e.target.value as Booking['status']
+                )
+              }
+              className="w-full px-3 py-3 text-sm border"
+              style={{
+                borderColor: 'var(--border)',
+                backgroundColor: 'var(--card)',
+                outline: 'none',
+              }}
+            >
+              <option value="confirmed">Confirm Reservation</option>
+              <option value="pending">Mark as Pending</option>
+              <option value="cancelled">Cancel Reservation</option>
+            </select>
           </div>
         </div>
+      )
+    })
+  )}
+</div>
+          </div>
+        </div>
+
       )}
 
       {/* Rooms tab */}
@@ -781,8 +1033,23 @@ setReservations(serverBookings)
                       >
                         <option value="available">Available</option>
                         <option value="occupied">Occupied</option>
+                        <option value="cleaning">Cleaning</option>
                         <option value="maintenance">Maintenance</option>
                       </select>
+                      {room.status === 'cleaning' && (
+                        <button
+                          type="button"
+                          onClick={() => markRoomAsCleaned(room.id)}
+                          className="w-full mt-2 px-3 py-2 text-xs tracking-[0.15em] uppercase border transition-opacity hover:opacity-70"
+                          style={{
+                            borderColor: '#2563eb',
+                            color: '#2563eb',
+                            backgroundColor: 'rgba(37,99,235,0.05)',
+                          }}
+                        >
+                          Mark as Cleaned
+                        </button>
+                      )}
                     </div>
                     <input
                       value={room.name}

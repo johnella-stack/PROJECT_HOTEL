@@ -1,6 +1,10 @@
 import type { Room } from '../App'
 
-export type RoomStatus = 'available' | 'occupied' | 'maintenance'
+export type RoomStatus =
+  | 'available'
+  | 'occupied'
+  | 'cleaning'
+  | 'maintenance'
 
 export interface RoomRecord {
   id: string
@@ -38,9 +42,11 @@ const normalizeRoomRecord = (
   const statusValue = String(room.status ?? 'available').toLowerCase()
 
   const status: RoomStatus =
-    statusValue === 'occupied' || statusValue === 'maintenance'
-      ? statusValue
-      : 'available'
+  statusValue === 'occupied' ||
+  statusValue === 'cleaning' ||
+  statusValue === 'maintenance'
+    ? statusValue
+    : 'available'
 
   const rawAvailable = (room as Record<string, unknown>).available
   const rawBookedForDates = (room as Record<string, unknown>).bookedForDates
