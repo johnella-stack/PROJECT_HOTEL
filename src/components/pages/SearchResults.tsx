@@ -106,6 +106,20 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
   const [showFilters, setShowFilters] = useState(false)
   const [localParams, setLocalParams] = useState(searchParams)
   const [rooms, setRooms] = useState<Room[]>(ALL_ROOMS)
+  const today = new Date().toISOString().split('T')[0]
+
+const getMinimumCheckOut = (checkIn: string) => {
+  if (!checkIn) return today
+
+  const date = new Date(`${checkIn}T00:00:00`)
+  date.setDate(date.getDate() + 1)
+
+  return date.toISOString().split('T')[0]
+}
+
+const minimumCheckOut = getMinimumCheckOut(
+  localParams.checkIn
+)
 
   // blocked dates per room for the current search range
   const [blockedByRoomId, setBlockedByRoomId] = useState<Record<string, Set<string>>>({})
@@ -211,12 +225,31 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
               Check-in
             </label>
             <input
-              type="date"
-              value={localParams.checkIn}
-              onChange={(e) => setLocalParams({ ...localParams, checkIn: e.target.value })}
-              className="w-full px-3 py-2 text-sm border rounded"
-              style={{ borderColor: 'var(--border)', outline: 'none', backgroundColor: 'transparent' }}
-            />
+                type="date"
+                min={today}
+                value={localParams.checkIn}
+                onChange={(e) => {
+                  const newCheckIn = e.target.value
+                  const newMinimumCheckOut =
+                    getMinimumCheckOut(newCheckIn)
+
+                  setLocalParams((current) => ({
+                    ...current,
+                    checkIn: newCheckIn,
+                    checkOut:
+                      !current.checkOut ||
+                      current.checkOut < newMinimumCheckOut
+                        ? newMinimumCheckOut
+                        : current.checkOut,
+                  }))
+                }}
+                className="w-full px-3 py-2 text-sm border rounded"
+                style={{
+                  borderColor: 'var(--border)',
+                  outline: 'none',
+                  backgroundColor: 'transparent',
+                }}
+              />
           </div>
           <div>
             <label
@@ -226,12 +259,22 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
               Check-out
             </label>
             <input
-              type="date"
-              value={localParams.checkOut}
-              onChange={(e) => setLocalParams({ ...localParams, checkOut: e.target.value })}
-              className="w-full px-3 py-2 text-sm border rounded"
-              style={{ borderColor: 'var(--border)', outline: 'none', backgroundColor: 'transparent' }}
-            />
+  type="date"
+  min={minimumCheckOut}
+  value={localParams.checkOut}
+  onChange={(e) =>
+    setLocalParams((current) => ({
+      ...current,
+      checkOut: e.target.value,
+    }))
+  }
+  className="w-full px-3 py-2 text-sm border rounded"
+  style={{
+    borderColor: 'var(--border)',
+    outline: 'none',
+    backgroundColor: 'transparent',
+  }}
+/>
           </div>
           <div>
             <label
@@ -246,7 +289,7 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
               className="w-full px-3 py-2 text-sm border rounded"
               style={{ borderColor: 'var(--border)', outline: 'none', backgroundColor: 'transparent' }}
             >
-              {[1, 2, 3, 4].map((n) => (
+              {Array.from({ length: 10 }, (_, index) => index + 1).map((n) => (
                 <option key={n} value={n}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
               ))}
             </select>
@@ -350,7 +393,7 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
           </h1>
           <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
             {filtered.length} {filtered.length === 1 ? 'room' : 'rooms'} found
-            {nights > 1 ? ` · formatPeso{nights} nights` : ''}
+            {nights > 1 ? ` · ${nights} nights` : ''}
           </p>
         </div>
       </div>
@@ -432,7 +475,7 @@ export default function SearchResults({ navigate, searchParams, setSearchParams,
                           className="text-xs mt-0.5 font-mono"
                           style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-dm-mono)' }}
                         >
-                          formatPeso{(room.price * nights).toLocaleString()} total
+                          {formatPeso(room.price * nights)} total
                         </p>
                       )}
                     </div>
