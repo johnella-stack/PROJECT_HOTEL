@@ -6,7 +6,7 @@ import {
 import type { Booking, Page } from '../../App'
 import { loadBookings, updateBookingStatus } from '../../lib/bookingStore'
 import { createRoomInServer, loadRoomsFromServer, persistStoredRooms, updateRoomInServer, type RoomRecord } from '../../lib/roomStore'
-
+import { formatPeso } from '../../lib/currency'
 interface Props {
   navigate: (p: Page) => void
 }
@@ -141,41 +141,89 @@ const updateStatus = async (
   }
 
   const addRoom = async () => {
-    const nextId = `formatPeso{rooms.length + 101}`
-    const newRoom: RoomItem = {
-      id: nextId,
-      name: `New Room formatPeso{nextId}`,
-      type: 'Standard',
-      price: 250,
-      status: 'available',
-      floor: 6,
-      lastCleaned: new Date().toLocaleString(),
-      image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&h=480&fit=crop&auto=format',
-    }
-    setRooms((current) => [newRoom, ...current])
-    try {
-      await createRoomInServer(newRoom)
-    } catch {
-      // ignore server sync errors and keep local state
-    }
+  const nextId = `ROOM-${Date.now()}`
+
+  const newRoom: RoomItem = {
+    id: nextId,
+    name: `New Room`,
+    type: 'Standard',
+    price: 2500,
+    status: 'available',
+    floor: 1,
+    lastCleaned: new Date().toISOString(),
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&h=480&fit=crop&auto=format',
+    size: 28,
+    capacity: 2,
+    available: true,
   }
 
-  const updateRoomField = async (id: string, field: 'name' | 'price' | 'image', value: string | number) => {
-    const nextRooms = rooms.map((room) => (room.id === id ? { ...room, [field]: value } : room))
-    setRooms(nextRooms)
-    try {
-      await updateRoomInServer(id, { [field]: value } as Partial<RoomItem>)
-    } catch {
-      // ignore server sync errors and keep local state
-    }
+  try {
+    const savedRoom = await createRoomInServer(newRoom)
+
+    setRooms((current) => [savedRoom, ...current])
+
+    persistStoredRooms([savedRoom, ...rooms])
+
+    window.dispatchEvent(
+      new CustomEvent('vernay-rooms-updated', {
+        detail: [savedRoom, ...rooms],
+      })
+    )
+
+    alert('Room added and saved to database successfully!')
+  } catch (error) {
+    console.error('CREATE ROOM ERROR:', error)
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Failed to create room'
+    )
   }
+}
+
+  const updateRoomField = async (
+  id: string,
+  field: 'name' | 'type' | 'price' | 'image' | 'floor' | 'size' | 'capacity',
+  value: string | number
+) => {
+  try {
+    const savedRoom = await updateRoomInServer(id, {
+      [field]: value,
+    } as Partial<RoomItem>)
+
+    const nextRooms = rooms.map((room) =>
+      room.id === id
+        ? savedRoom
+        : room
+    )
+
+    setRooms(nextRooms)
+    persistStoredRooms(nextRooms)
+
+    window.dispatchEvent(
+      new CustomEvent('vernay-rooms-updated', {
+        detail: nextRooms,
+      })
+    )
+  } catch (error) {
+    console.error('UPDATE ROOM ERROR:', error)
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Failed to update room'
+    )
+  }
+}
 
   const handleWalkInCreate = (e: React.FormEvent) => {
     e.preventDefault()
     const booking: Booking = {
-      id: `VNY-formatPeso{Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+     id: `VNY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       room: {
-        id: `walkin-formatPeso{walkInForm.roomName.toLowerCase().replace(/\s+/g, '-')}`,
+        id: `walkin-${walkInForm.roomName.toLowerCase().replace(/\s+/g, '-')}`,
         name: walkInForm.roomName,
         type: 'walk-in',
         price: walkInForm.totalPrice,
@@ -268,9 +316,15 @@ const updateStatus = async (
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {[
-              { label: 'Total Revenue', value: `formatPeso{revenue.toLocaleString()}`, sub: 'Confirmed bookings', icon: <TrendingUp size={18} />, accent: true },
-              { label: 'Confirmed', value: confirmed, sub: `formatPeso{pending} pending`, icon: <CheckCircle size={18} />, accent: false },
-              { label: 'Rooms Available', value: rooms.filter((r) => r.status === 'available').length, sub: `formatPeso{rooms.filter((r) => r.status === 'occupied').length} occupied`, icon: <BedDouble size={18} />, accent: false },
+              {
+  label: 'Total Revenue',
+  value: formatPeso(revenue),
+  sub: 'Confirmed bookings',
+  icon: <TrendingUp size={18} />,
+  accent: true
+},
+              { label: 'Confirmed', value: confirmed, sub: `${pending} pending`, icon: <CheckCircle size={18} />, accent: false },
+              { label: 'Rooms Available', value: rooms.filter((r) => r.status === 'available').length, sub: `${rooms.filter((r) => r.status === 'occupied').length} occupied`, icon: <BedDouble size={18} />, accent: false },
               { label: 'Total Guests', value: reservations.length, sub: 'All time', icon: <Users size={18} />, accent: false },
             ].map((kpi) => (
               <div
@@ -360,7 +414,7 @@ const updateStatus = async (
                         <td className="px-6 py-3.5 font-medium">{r.guestName}</td>
                         <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.room.name}</td>
                         <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.checkIn}</td>
-                        <td className="px-6 py-3.5 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>€{r.totalPrice.toLocaleString()}</td>
+                        <td className="px-6 py-3.5 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatPeso(r.totalPrice)}</td>
                         <td className="px-6 py-3.5">
                           <span
                             className="flex items-center gap-1.5 w-fit text-xs px-2 py-1"
@@ -539,7 +593,7 @@ const updateStatus = async (
                       className="font-display text-base font-semibold"
                       style={{ color: 'var(--accent)' }}
                     >
-                      €{room.price}<span className="text-xs font-normal">/night</span>
+                     {formatPeso(room.price)}<span className="text-xs font-normal">/night</span>
                     </span>
                   </div>
                   <div
@@ -571,19 +625,132 @@ const updateStatus = async (
                       style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
                       placeholder="Room name"
                     />
-                    <input
+                    
+                   <input
                       type="number"
                       value={room.price}
-                      onChange={(e) => updateRoomField(room.id, 'price', Number(e.target.value))}
+                      onChange={(e) =>
+                        updateRoomField(
+                          room.id,
+                          'price',
+                          Number(e.target.value)
+                        )
+                      }
                       className="w-full px-2 py-1.5 border text-xs"
-                      style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
+                      style={{
+                        borderColor: 'var(--border)',
+                        backgroundColor: 'transparent',
+                        outline: 'none',
+                      }}
                       placeholder="Price"
                     />
+
+                    {/* MAXIMUM GUESTS */}
+                    <div>
+                      <label
+                        className="block text-xs mb-1"
+                        style={{ color: 'var(--muted-foreground)' }}
+                      >
+                        Maximum Guests
+                      </label>
+
+                      <input
+                        type="number"
+                        min="1"
+                        value={room.capacity ?? 2}
+                        onChange={(e) =>
+                          updateRoomField(
+                            room.id,
+                            'capacity',
+                            Number(e.target.value)
+                          )
+                        }
+                        className="w-full px-2 py-1.5 border text-xs"
+                        style={{
+                          borderColor: 'var(--border)',
+                          backgroundColor: 'transparent',
+                          outline: 'none',
+                        }}
+                        placeholder="Maximum guests"
+                      />
+                    </div>
+
+                    {/* ROOM SIZE */}
+                    <div>
+                      <label
+                        className="block text-xs mb-1"
+                        style={{ color: 'var(--muted-foreground)' }}
+                      >
+                        Room Size (m²)
+                      </label>
+
+                      <input
+                        type="number"
+                        min="1"
+                        value={room.size ?? 28}
+                        onChange={(e) =>
+                          updateRoomField(
+                            room.id,
+                            'size',
+                            Number(e.target.value)
+                          )
+                        }
+                        className="w-full px-2 py-1.5 border text-xs"
+                        style={{
+                          borderColor: 'var(--border)',
+                          backgroundColor: 'transparent',
+                          outline: 'none',
+                        }}
+                        placeholder="Room size"
+                      />
+                    </div>
+
+                    {/* FLOOR */}
+                    <div>
+                      <label
+                        className="block text-xs mb-1"
+                        style={{ color: 'var(--muted-foreground)' }}
+                      >
+                        Floor
+                      </label>
+
+                      <input
+                        type="number"
+                        min="1"
+                        value={room.floor}
+                        onChange={(e) =>
+                          updateRoomField(
+                            room.id,
+                            'floor',
+                            Number(e.target.value)
+                          )
+                        }
+                        className="w-full px-2 py-1.5 border text-xs"
+                        style={{
+                          borderColor: 'var(--border)',
+                          backgroundColor: 'transparent',
+                          outline: 'none',
+                        }}
+                        placeholder="Floor"
+                      />
+                    </div>
+
+                    {/* IMAGE URL */}
                     <input
                       value={room.image ?? ''}
-                      onChange={(e) => updateRoomField(room.id, 'image', e.target.value)}
+                      onChange={(e) =>
+                        updateRoomField(
+                          room.id,
+                          'image',
+                          e.target.value
+                        )
+                      }
                       className="w-full px-2 py-1.5 border text-xs"
-                      style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
+                      style={{
+                        borderColor: 'var(--border)',
+                        backgroundColor: 'transparent',
+                        outline: 'none',
+                      }}
                       placeholder="Image URL"
                     />
                   </div>
@@ -710,7 +877,7 @@ const updateStatus = async (
                       className="px-6 py-4 font-mono"
                       style={{ fontFamily: 'var(--font-dm-mono)', color: 'var(--accent)' }}
                     >
-                      €{totalSpent.toLocaleString()}
+                      {formatPeso(totalSpent)}
                     </td>
                     <td
                       className="px-6 py-4 font-mono text-xs"

@@ -41,20 +41,63 @@ async function createTables() {
   `)
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS rooms (
-      id VARCHAR(20) PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      type VARCHAR(100) NOT NULL,
-      price DECIMAL(10, 2) NOT NULL,
-      status VARCHAR(50) DEFAULT 'available',
-      floor INT DEFAULT 1,
-      last_cleaned DATETIME NULL,
-      image TEXT NULL,
-      size INT NULL,
-      capacity INT NULL,
-      available TINYINT(1) DEFAULT 1
-    )
+  CREATE TABLE IF NOT EXISTS rooms (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'available',
+    floor INT DEFAULT 1,
+    last_cleaned DATETIME,
+    size INT DEFAULT 28,
+    capacity INT DEFAULT 2,
+    image TEXT,
+    available TINYINT(1) DEFAULT 1
+  )
+`)
+try {
+  await pool.query(`
+    ALTER TABLE rooms
+    ADD COLUMN capacity INT DEFAULT 2
   `)
+} catch (error) {
+  if (error.code !== 'ER_DUP_FIELDNAME') {
+    throw error
+  }
+}
+
+try {
+  await pool.query(`
+    ALTER TABLE rooms
+    ADD COLUMN size INT DEFAULT 28
+  `)
+} catch (error) {
+  if (error.code !== 'ER_DUP_FIELDNAME') {
+    throw error
+  }
+}
+
+try {
+  await pool.query(`
+    ALTER TABLE rooms
+    ADD COLUMN image TEXT
+  `)
+} catch (error) {
+  if (error.code !== 'ER_DUP_FIELDNAME') {
+    throw error
+  }
+}
+
+try {
+  await pool.query(`
+    ALTER TABLE rooms
+    ADD COLUMN available TINYINT(1) DEFAULT 1
+  `)
+} catch (error) {
+  if (error.code !== 'ER_DUP_FIELDNAME') {
+    throw error
+  }
+}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bookings (
@@ -95,19 +138,18 @@ async function seedRooms() {
         capacity,
         available
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        room.id,
-        room.name,
-        room.type,
-        room.price,
-        room.status,
-        room.floor,
-        room.last_cleaned,
-        room.image,
-        room.size,
-        room.capacity,
-        room.available
-      ]
+     [
+  room.id,
+  room.name,
+  room.type,
+  Number(room.price),
+  room.status || 'available',
+  Number(room.floor) || 1,
+  room.image || null,
+  Number(room.size) || 28,
+  Number(room.capacity) || 2,
+  room.available === false ? 0 : 1,
+]
     )
   }
 
