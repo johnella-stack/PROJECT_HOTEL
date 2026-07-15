@@ -267,9 +267,9 @@ const updateStatus = async (
   ]
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <p
             className="text-xs tracking-[0.3em] uppercase mb-1"
@@ -283,7 +283,7 @@ const updateStatus = async (
         </div>
         <button
           onClick={() => navigate('home')}
-          className="text-sm tracking-wide flex items-center gap-2 px-4 py-2 border transition-opacity hover:opacity-70"
+          className="w-full sm:w-auto justify-center text-xs sm:text-sm tracking-wide flex items-center gap-2 px-4 py-2.5 border transition-opacity hover:opacity-70"
           style={{ borderColor: 'var(--border)' }}
         >
           View Site <ArrowUpRight size={13} />
@@ -292,14 +292,17 @@ const updateStatus = async (
 
       {/* Tab nav */}
       <div
-        className="flex border-b mb-8"
-        style={{ borderColor: 'var(--border)' }}
-      >
+  className="flex overflow-x-auto whitespace-nowrap border-b mb-6 sm:mb-8 -mx-3 px-3 sm:mx-0 sm:px-0"
+  style={{
+    borderColor: 'var(--border)',
+    scrollbarWidth: 'none',
+  }}
+>
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="flex items-center gap-2 px-5 py-3 text-sm tracking-wide border-b-2 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 text-xs sm:text-sm tracking-wide border-b-2 transition-colors"
             style={{
               borderColor: activeTab === tab.id ? 'var(--accent)' : 'transparent',
               color: activeTab === tab.id ? 'var(--accent)' : 'var(--muted-foreground)',
@@ -314,7 +317,7 @@ const updateStatus = async (
       {activeTab === 'overview' && (
         <div>
           {/* KPI cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6 sm:mb-8">
             {[
               {
   label: 'Total Revenue',
@@ -329,7 +332,7 @@ const updateStatus = async (
             ].map((kpi) => (
               <div
                 key={kpi.label}
-                className="p-5 border"
+                className="p-4 sm:p-5 border min-w-0"
                 style={{
                   backgroundColor: kpi.accent ? 'var(--primary)' : 'var(--card)',
                   borderColor: kpi.accent ? 'transparent' : 'var(--border)',
@@ -348,7 +351,7 @@ const updateStatus = async (
                   </span>
                 </div>
                 <p
-                  className="font-display text-3xl font-semibold"
+                  className="font-display text-2xl sm:text-3xl font-semibold break-words"
                   style={{ color: kpi.accent ? 'var(--primary-foreground)' : 'var(--foreground)' }}
                 >
                   {kpi.value}
@@ -369,7 +372,7 @@ const updateStatus = async (
             style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
           >
             <div
-              className="px-6 py-4 border-b flex items-center justify-between"
+              className="px-3 sm:px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
               style={{ borderColor: 'var(--border)' }}
             >
               <h2 className="text-sm font-semibold tracking-wide">Recent Reservations</h2>
@@ -388,7 +391,7 @@ const updateStatus = async (
                     {['ID', 'Guest', 'Room', 'Check-in', 'Amount', 'Status'].map((h) => (
                       <th
                         key={h}
-                        className="px-6 py-3 text-left text-xs tracking-widests uppercase"
+                        className="px-3 sm:px-6 py-3 text-left text-xs tracking-widests uppercase"
                         style={{ color: 'var(--muted-foreground)' }}
                       >
                         {h}
@@ -406,7 +409,7 @@ const updateStatus = async (
                         style={{ borderColor: 'var(--border)' }}
                       >
                         <td
-                          className="px-6 py-3.5 font-mono text-xs"
+                         className="px-3 sm:px-6 py-3.5 whitespace-nowrap font-mono text-xs"
                           style={{ fontFamily: 'var(--font-dm-mono)', color: 'var(--muted-foreground)' }}
                         >
                           {r.id}
@@ -436,11 +439,8 @@ const updateStatus = async (
       {/* Reservations tab */}
       {activeTab === 'reservations' && (
         <div>
-          <div className="flex items-center justify-between mb-5">
-            <div
-              className="relative flex items-center"
-              style={{ width: '280px' }}
-            >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <div className="relative flex items-center w-full sm:w-[280px]">
               <Search
                 size={14}
                 className="absolute left-3"
@@ -457,7 +457,7 @@ const updateStatus = async (
             </div>
             <button
               onClick={() => setActiveTab('guests')}
-              className="flex items-center gap-2 px-4 py-2 text-sm tracking-wide"
+              className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2.5 text-sm tracking-wide"
               style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
             >
               <Plus size={14} /> New Reservation
@@ -468,7 +468,7 @@ const updateStatus = async (
             style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
           >
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+               <table className="w-full min-w-[700px] text-sm">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--muted)' }}>
                     {['ID', 'Guest', 'Room', 'Check-in', 'Check-out', 'Amount', 'Status', 'Actions'].map((h) => (
@@ -504,7 +504,7 @@ const updateStatus = async (
                         <td className="px-5 py-3" style={{ color: 'var(--muted-foreground)' }}>{r.room.name}</td>
                         <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{r.checkIn}</td>
                         <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{r.checkOut}</td>
-                        <td className="px-5 py-3 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>€{r.totalPrice.toLocaleString()}</td>
+                        <td className="px-5 py-3 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatPeso(r.totalPrice)}</td>
                         <td className="px-5 py-3">
                           <span
                             className="flex items-center gap-1.5 w-fit text-xs px-2 py-1"
@@ -538,8 +538,8 @@ const updateStatus = async (
       {/* Rooms tab */}
       {activeTab === 'rooms' && (
         <div>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {Object.entries(ROOM_STATUS_CONFIG).map(([key, val]) => {
                 const count = rooms.filter((r) => r.status === key).length
                 return (
@@ -554,20 +554,20 @@ const updateStatus = async (
               })}
             </div>
             <button
-              onClick={addRoom}
-              className="flex items-center gap-2 px-4 py-2 text-sm tracking-wide"
+                onClick={addRoom}
+                className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2.5 text-sm tracking-wide"
               style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
             >
               <Plus size={14} /> Add Room
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
             {rooms.map((room) => {
               const s = ROOM_STATUS_CONFIG[room.status]
               return (
                 <div
                   key={room.id}
-                  className="border p-5"
+                  className="border p-3 sm:p-5 min-w-0 overflow-hidden"
                   style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -636,7 +636,7 @@ const updateStatus = async (
                           Number(e.target.value)
                         )
                       }
-                      className="w-full px-2 py-1.5 border text-xs"
+                      className="w-full min-w-0 px-2 py-2 border text-xs"
                       style={{
                         borderColor: 'var(--border)',
                         backgroundColor: 'transparent',
