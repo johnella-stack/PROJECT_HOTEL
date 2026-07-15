@@ -473,10 +473,11 @@ app.put('/api/bookings/:id/status', async (req, res) => {
     await connection.beginTransaction()
 
     const [bookings] = await connection.query(
-      `SELECT id, room_id, room_name
+      `SELECT id, room_id, room_name, check_in, check_out
        FROM bookings
        WHERE id = ?
-       LIMIT 1`,
+       LIMIT 1
+       FOR UPDATE`,
       [bookingId]
     )
 
@@ -503,6 +504,13 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 
       if (rooms.length > 0) {
         roomId = rooms[0].id
+
+        await connection.query(
+          `UPDATE bookings
+           SET room_id = ?
+           WHERE id = ?`,
+          [roomId, bookingId]
+        )
       }
     }
 
@@ -513,11 +521,61 @@ app.put('/api/bookings/:id/status', async (req, res) => {
       [status, bookingId]
     )
 
-   
+    if (roomId) {
+      if (status === 'confirmed') {
+  const checkInDate = String(booking.check_in)
+  const checkOutDate = String(booking.check_out)
 
-  
+  await connection.query(
+    `UPDATE rooms
+     SET status = CASE
+       WHEN CURDATE() >= DATE(?)
+        AND CURDATE() < DATE(?)
+       THEN 'occupied'
+       ELSE 'available'
+     END,
+     available = CASE
+       WHEN CURDATE() >= DATE(?)
+        AND CURDATE() < DATE(?)
+       THEN 0
+       ELSE 1
+     END
+     WHERE id = ?
+       AND status != 'maintenance'`,
+    [
+      checkInDate,
+      checkOutDate,
+      checkInDate,
+      checkOutDate,
+      roomId,
+    ]
+  )
+}
 
-   
+      if (status === 'cancelled') {
+        const [activeBookings] = await connection.query(
+          `SELECT COUNT(*) AS count
+           FROM bookings
+           WHERE room_id = ?
+             AND id != ?
+             AND status = 'confirmed'
+             AND CURDATE() >= DATE(check_in)
+             AND CURDATE() < DATE(check_out)`,
+          [roomId, bookingId]
+        )
+
+        if (Number(activeBookings[0].count) === 0) {
+          await connection.query(
+            `UPDATE rooms
+             SET status = 'available',
+                 available = 1
+             WHERE id = ?
+               AND status != 'maintenance'`,
+            [roomId]
+          )
+        }
+      }
+    }
 
     await connection.commit()
 
@@ -537,6 +595,7 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 
     res.status(500).json({
       message: 'Unable to update booking',
+      error: error.message,
     })
   } finally {
     connection.release()
