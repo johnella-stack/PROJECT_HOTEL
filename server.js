@@ -523,8 +523,18 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 
     if (roomId) {
       if (status === 'confirmed') {
-  const checkInDate = String(booking.check_in)
-  const checkOutDate = String(booking.check_out)
+  const formatMySQLDate = (value) => {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid booking date')
+  }
+
+  return date.toISOString().slice(0, 10)
+}
+
+const checkInDate = formatMySQLDate(booking.check_in)
+const checkOutDate = formatMySQLDate(booking.check_out)
 
   await connection.query(
     `UPDATE rooms
