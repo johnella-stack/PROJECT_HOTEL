@@ -145,11 +145,12 @@ async function seedRooms() {
       Number(room.price),
       room.status || 'available',
       Number(room.floor) || 1,
+      room.last_cleaned || null,
       room.image || null,
       Number(room.size) || 28,
       Number(room.capacity) || 2,
-      room.available === false ? 0 : 1,
-    ]
+      room.available === false || room.available === 0 ? 0 : 1,
+      ]
     )
   } 
 
@@ -521,69 +522,57 @@ app.put('/api/bookings/:id/status', async (req, res) => {
       [status, bookingId]
     )
 
-    if (roomId) {
+        if (roomId) {
       if (status === 'confirmed') {
-  const formatMySQLDate = (value) => {
-  const date = new Date(value)
+        const formatMySQLDate = (value) => {
+          const date = new Date(value)
 
-  if (Number.isNaN(date.getTime())) {
-    throw new Error('Invalid booking date')
-  }
+          if (Number.isNaN(date.getTime())) {
+            throw new Error('Invalid booking date')
+          }
 
-  return date.toISOString().slice(0, 10)
-}
-
-const checkInDate = formatMySQLDate(booking.check_in)
-const checkOutDate = formatMySQLDate(booking.check_out)
-
-  await connection.query(
-    `UPDATE rooms
-     SET status = CASE
-       WHEN CURDATE() >= DATE(?)
-        AND CURDATE() < DATE(?)
-       THEN 'occupied'
-       ELSE 'available'
-     END,
-     available = CASE
-       WHEN CURDATE() >= DATE(?)
-        AND CURDATE() < DATE(?)
-       THEN 0
-       ELSE 1
-     END
-     WHERE id = ?
-       AND status != 'maintenance'`,
-    [
-      checkInDate,
-      checkOutDate,
-      checkInDate,
-      checkOutDate,
-      roomId,
-    ]
-  )
-}
-
-      if (status === 'cancelled') {
-        const [activeBookings] = await connection.query(
-          `SELECT COUNT(*) AS count
-           FROM bookings
-           WHERE room_id = ?
-             AND id != ?
-             AND status = 'confirmed'
-             AND CURDATE() >= DATE(check_in)
-             AND CURDATE() < DATE(check_out)`,
-          [roomId, bookingId]
-        )
-
-        if (Number(activeBookings[0].count) === 0) {
-          await connection.query(
-            `UPDATE rooms
-             SET status = 'available',
-                 available = 1
-             WHERE id = ?
-               AND status != 'maintenance'`,
-            [roomId]
-          )
+          return date.toISOString().slice(0, 10)
         }
+
+        const checkInDate = formatMySQLDate(booking.check_in)
+        const checkOutDate = formatMySQLDate(booking.check_out)
+        const today = getManilaDate()
+
+        console.log('Booking room status check:', {
+          roomId,
+          today,
+          checkInDate,
+          checkOutDate,
+        })
+
+        await connection.query(
+          `UPDATE rooms
+           SET status = CASE
+             WHEN DATE(?) >= DATE(?)
+              AND DATE(?) < DATE(?)
+             THEN 'occupied'
+             ELSE 'available'
+           END,
+           available = CASE
+             WHEN DATE(?) >= DATE(?)
+              AND DATE(?) < DATE(?)
+             THEN 0
+             ELSE 1
+           END
+           WHERE id = ?
+             AND status != 'maintenance'`,
+          [
+            today,
+            checkInDate,
+            today,
+            checkOutDate,
+            today,
+            checkInDate,
+            today,
+            checkOutDate,
+            roomId,
+          ]
+        )
       }
     }
 
@@ -611,50 +600,73 @@ const checkOutDate = formatMySQLDate(booking.check_out)
     connection.release()
   }
 })
+const getManilaDate = () => {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
 const syncAutomaticRoomStatuses = async () => {
+  const today = getManilaDate()
+
   try {
     // Active confirmed stay -> OCCUPIED
-    await pool.query(`
+    await pool.query(
+      `
       UPDATE rooms r
-      SET r.status = 'occupied'
+      SET
+        r.status = 'occupied',
+        r.available = 0
       WHERE r.status != 'maintenance'
         AND EXISTS (
           SELECT 1
           FROM bookings b
           WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
             AND b.status = 'confirmed'
-            AND CURDATE() >= DATE(b.check_in)
-            AND CURDATE() < DATE(b.check_out)
+            AND DATE(?) >= DATE(b.check_in)
+            AND DATE(?) < DATE(b.check_out)
         )
-    `)
+      `,
+      [today, today]
+    )
 
-    // Checkout reached and not cleaned after checkout -> CLEANING
-    await pool.query(`
+    // Checkout reached and room still needs cleaning -> CLEANING
+    await pool.query(
+      `
       UPDATE rooms r
-      SET r.status = 'cleaning'
+      SET
+        r.status = 'cleaning',
+        r.available = 0
       WHERE r.status != 'maintenance'
         AND NOT EXISTS (
           SELECT 1
           FROM bookings active_booking
           WHERE CAST(active_booking.room_id AS CHAR) = CAST(r.id AS CHAR)
             AND active_booking.status = 'confirmed'
-            AND CURDATE() >= DATE(active_booking.check_in)
-            AND CURDATE() < DATE(active_booking.check_out)
+            AND DATE(?) >= DATE(active_booking.check_in)
+            AND DATE(?) < DATE(active_booking.check_out)
         )
         AND EXISTS (
           SELECT 1
           FROM bookings b
           WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
             AND b.status = 'confirmed'
-            AND CURDATE() >= DATE(b.check_out)
+            AND DATE(?) >= DATE(b.check_out)
             AND (
               r.last_cleaned IS NULL
               OR r.last_cleaned < b.check_out
             )
         )
-    `)
+      `,
+      [today, today, today]
+    )
 
-    console.log('Automatic room statuses synchronized')
+    console.log(
+      'Automatic room statuses synchronized:',
+      today
+    )
   } catch (error) {
     console.error(
       'Automatic room status sync error:',
