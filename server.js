@@ -743,8 +743,30 @@ const syncAutomaticRoomStatuses = async () => {
       [today, today]
     )
 
-    // 2. FINISHED STAY -> CLEANING
-    // Only if the room has NOT been cleaned after checkout
+    // 2. RELEASE STALE OCCUPIED ROOMS
+    // If there is no active confirmed stay today,
+    // the room must not remain stuck as occupied.
+    await pool.query(
+      `
+      UPDATE rooms r
+      SET
+        r.status = 'available',
+        r.available = 1
+      WHERE r.status = 'occupied'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM bookings b
+          WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
+            AND b.status = 'confirmed'
+            AND DATE(?) >= DATE(b.check_in)
+            AND DATE(?) < DATE(b.check_out)
+        )
+      `,
+      [today, today]
+    )
+
+    // 3. FINISHED STAY -> CLEANING
+    // Only if the room has not been cleaned after checkout.
     await pool.query(
       `
       UPDATE rooms r
