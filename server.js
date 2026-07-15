@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs'
 import express from 'express'
 import cors from 'cors'
 import mysql from 'mysql2/promise'
@@ -252,40 +253,132 @@ app.get('/api/health', async (_req, res) => {
 
 app.post('/api/register', async (req, res) => {
   const { name, email, password, role } = req.body
+
+  if (!name || !email || !password) {
+    return res.status(400).json({
+      message: 'Name, email, and password are required',
+    })
+  }
+
   try {
+    const normalizedEmail = email.trim().toLowerCase()
+
+    const hashedPassword = await bcrypt.hash(password, 12)
+
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-      [name, email.toLowerCase(), password, role || 'guest']
+      `INSERT INTO users (
+        name,
+        email,
+        password,
+        role
+      ) VALUES (?, ?, ?, ?)`,
+      [
+        name.trim(),
+        normalizedEmail,
+        hashedPassword,
+        role || 'guest',
+      ]
     )
-    res.json({
+
+    res.status(201).json({
       id: result.insertId,
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      email: normalizedEmail,
       role: role || 'guest',
     })
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'Account already exists' })
+      return res.status(409).json({
+        message: 'Account already exists',
+      })
     }
+
     console.error('Register error:', error.message)
-    res.status(500).json({ message: 'Unable to register right now' })
+
+    res.status(500).json({
+      message: 'Unable to register right now',
+    })
   }
 })
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body
+
+  if (!email || !password) {
+    return res.status(400).json({
+      message: 'Email and password are required',
+    })
+  }
+
   try {
+    const normalizedEmail = email.trim().toLowerCase()
+
     const [rows] = await pool.query(
-      'SELECT id, name, email, role FROM users WHERE email = ? AND password = ?',
-      [email.toLowerCase(), password]
+      `SELECT id, name, email, password, role
+       FROM users
+       WHERE email = ?
+       LIMIT 1`,
+      [normalizedEmail]
     )
+
     if (!rows.length) {
-      return res.status(401).json({ message: 'Invalid credentials' })
+      return res.status(401).json({
+        message: 'Invalid credentials',
+      })
     }
-    res.json(rows[0])
+
+    const user = rows[0]
+    const storedPassword = String(user.password ?? '')
+
+    const isBcryptPassword =
+      storedPassword.startsWith('$2a$') ||
+      storedPassword.startsWith('$2b$') ||
+      storedPassword.startsWith('$2y$')
+
+    let passwordMatches = false
+
+    if (isBcryptPassword) {
+      passwordMatches = await bcrypt.compare(
+        password,
+        storedPassword
+      )
+    } else {
+      passwordMatches = password === storedPassword
+
+      if (passwordMatches) {
+        const hashedPassword = await bcrypt.hash(password, 12)
+
+        await pool.query(
+          `UPDATE users
+           SET password = ?
+           WHERE id = ?`,
+          [hashedPassword, user.id]
+        )
+
+        console.log(
+          `Migrated user ${user.id} to hashed password`
+        )
+      }
+    }
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        message: 'Invalid credentials',
+      })
+    }
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    })
   } catch (error) {
     console.error('Login error:', error.message)
-    res.status(500).json({ message: 'Unable to sign in right now' })
+
+    res.status(500).json({
+      message: 'Unable to sign in right now',
+    })
   }
 })
 
