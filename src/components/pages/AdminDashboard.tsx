@@ -1079,44 +1079,55 @@ const updateStatus = async (
       </div>
     </div>
 
-    <div>
-      <label
-        className="block text-xs tracking-wide uppercase mb-2"
-        style={{ color: 'var(--muted-foreground)' }}
-      >
-        Number of Guests
-      </label>
+  
+      <div>
+  <label
+    className="block text-xs tracking-wide uppercase mb-2"
+    style={{ color: 'var(--muted-foreground)' }}
+  >
+    Number of Guests
+  </label>
 
-      <input
-        required
-        type="number"
-        min="1"
-        max={selectedWalkInRoom?.capacity ?? 1}
-        value={walkInForm.guests}
-        onChange={(e) =>
-          setWalkInForm({
-            ...walkInForm,
-            guests: Number(e.target.value),
-          })
-        }
-        className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
-        style={{
-          borderColor: 'var(--border)',
-          backgroundColor: 'transparent',
-          outline: 'none',
-        }}
-      />
+  <input
+    required
+    type="number"
+    min="1"
+    max={selectedWalkInRoom?.capacity ?? 1}
+    value={walkInForm.guests === 0 ? '' : walkInForm.guests}
+    onChange={(e) => {
+      const value = e.target.value
 
-      {selectedWalkInRoom && (
-        <p
-          className="text-xs mt-2"
-          style={{ color: 'var(--muted-foreground)' }}
-        >
-          Maximum {selectedWalkInRoom.capacity ?? 2} guests
-          for this room.
-        </p>
-      )}
-    </div>
+      setWalkInForm({
+        ...walkInForm,
+        guests: value === '' ? 0 : Number(value),
+      })
+    }}
+    onBlur={() => {
+      if (walkInForm.guests < 1) {
+        setWalkInForm({
+          ...walkInForm,
+          guests: 1,
+        })
+      }
+    }}
+    className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
+    style={{
+      borderColor: 'var(--border)',
+      backgroundColor: 'transparent',
+      outline: 'none',
+    }}
+  />
+
+  {selectedWalkInRoom && (
+    <p
+      className="text-xs mt-2"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Maximum {selectedWalkInRoom.capacity ?? 2} guests
+      for this room.
+    </p>
+  )}
+</div>
 
     <div
       className="p-4 border"
