@@ -4,7 +4,10 @@ import {
   CheckCircle, Clock, XCircle, Plus, Search, ArrowUpRight
 } from 'lucide-react'
 import type { Booking, Page } from '../../App'
-import { loadBookings, updateBookingStatus } from '../../lib/bookingStore'
+import {addBooking,
+  loadBookings,
+  updateBookingStatus,
+} from '../../lib/bookingStore'
 import { createRoomInServer, loadRoomsFromServer, persistStoredRooms, updateRoomInServer, type RoomRecord } from '../../lib/roomStore'
 import { formatPeso } from '../../lib/currency'
 interface Props {
@@ -42,14 +45,41 @@ export default function AdminDashboard({ navigate }: Props) {
   const [reservations, setReservations] = useState<Booking[]>(() => loadBookings())
   const [rooms, setRooms] = useState<RoomItem[]>(ROOMS)
   const [walkInForm, setWalkInForm] = useState({
-    guestName: '',
-    guestEmail: '',
-    roomName: 'Classic Double Room',
-    checkIn: '',
-    checkOut: '',
-    guests: 2,
-    totalPrice: 189,
-  })
+  guestName: '',
+  guestEmail: '',
+  roomId: '',
+  checkIn: '',
+  checkOut: '',
+  guests: 1,
+})
+const selectedWalkInRoom = useMemo(
+  () => rooms.find((room) => room.id === walkInForm.roomId),
+  [rooms, walkInForm.roomId]
+)
+
+const walkInNights = useMemo(() => {
+  if (!walkInForm.checkIn || !walkInForm.checkOut) {
+    return 0
+  }
+
+  const checkIn = new Date(walkInForm.checkIn)
+  const checkOut = new Date(walkInForm.checkOut)
+
+  const difference =
+    checkOut.getTime() - checkIn.getTime()
+
+  return Math.max(
+    0,
+    Math.ceil(difference / 86400000)
+  )
+}, [walkInForm.checkIn, walkInForm.checkOut])
+
+const walkInTotal =
+  selectedWalkInRoom && walkInNights > 0
+    ? selectedWalkInRoom.price * walkInNights
+    : 0
+
+
 
   useEffect(() => {
     setReservations(loadBookings())
@@ -218,47 +248,103 @@ const updateStatus = async (
   }
 }
 
-  const handleWalkInCreate = (e: React.FormEvent) => {
-    e.preventDefault()
-    const booking: Booking = {
-     id: `VNY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      room: {
-        id: `walkin-${walkInForm.roomName.toLowerCase().replace(/\s+/g, '-')}`,
-        name: walkInForm.roomName,
-        type: 'walk-in',
-        price: walkInForm.totalPrice,
-        size: 30,
-        capacity: walkInForm.guests,
-        available: true,
-        image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&h=480&fit=crop&auto=format',
-        features: ['WiFi', 'TV'],
-        description: 'Walk-in reservation created by the front desk.',
-      },
-      checkIn: walkInForm.checkIn,
-      checkOut: walkInForm.checkOut,
-      guests: walkInForm.guests,
-      totalPrice: walkInForm.totalPrice,
-      guestName: walkInForm.guestName,
-      guestEmail: walkInForm.guestEmail,
-      paymentMethod: 'cash',
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    }
+  const handleWalkInCreate = async (
+  e: React.FormEvent
+) => {
+  e.preventDefault()
 
-    const nextBookings = [booking, ...reservations]
-    localStorage.setItem('vernay-bookings', JSON.stringify(nextBookings))
-    setReservations(nextBookings)
+  if (!selectedWalkInRoom) {
+    alert('Please select a room.')
+    return
+  }
+
+  if (!walkInForm.checkIn || !walkInForm.checkOut) {
+    alert('Please select check-in and check-out dates.')
+    return
+  }
+
+  if (walkInNights <= 0) {
+    alert('Check-out date must be after check-in date.')
+    return
+  }
+
+  if (
+    walkInForm.guests < 1 ||
+    walkInForm.guests > (selectedWalkInRoom.capacity ?? 2)
+  ) {
+    alert(
+      `This room allows a maximum of ${
+        selectedWalkInRoom.capacity ?? 2
+      } guests.`
+    )
+    return
+  }
+
+  const booking: Booking = {
+    id: `VNY-${Math.random()
+      .toString(36)
+      .slice(2, 8)
+      .toUpperCase()}`,
+
+    room: {
+      id: selectedWalkInRoom.id,
+      name: selectedWalkInRoom.name,
+      type: selectedWalkInRoom.type.toLowerCase(),
+      price: selectedWalkInRoom.price,
+      size: selectedWalkInRoom.size ?? 28,
+      capacity: selectedWalkInRoom.capacity ?? 2,
+      available: true,
+      image:
+        selectedWalkInRoom.image ??
+        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&h=480&fit=crop&auto=format',
+      features: ['WiFi', 'TV', 'Air Conditioning'],
+      description: `${selectedWalkInRoom.name} front desk reservation.`,
+    },
+
+    checkIn: walkInForm.checkIn,
+    checkOut: walkInForm.checkOut,
+    guests: walkInForm.guests,
+    totalPrice: walkInTotal,
+    guestName: walkInForm.guestName,
+    guestEmail: walkInForm.guestEmail,
+    paymentMethod: 'cash',
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+  }
+
+  try {
+    const savedBooking = await addBooking(booking)
+
+    setReservations((current) => [
+      savedBooking,
+      ...current.filter(
+        (item) => item.id !== savedBooking.id
+      ),
+    ])
+
     setWalkInForm({
       guestName: '',
       guestEmail: '',
-      roomName: 'Classic Double Room',
+      roomId: '',
       checkIn: '',
       checkOut: '',
-      guests: 2,
-      totalPrice: 189,
+      guests: 1,
     })
-  }
 
+    alert('Reservation created successfully!')
+  } catch (error) {
+    console.error(
+      'CREATE FRONT DESK RESERVATION ERROR:',
+      error
+    )
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Failed to create reservation'
+    )
+  }
+}
   const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={15} /> },
     { id: 'reservations', label: 'Reservations', icon: <CalendarCheck size={15} /> },
@@ -765,73 +851,322 @@ const updateStatus = async (
       {activeTab === 'guests' && (
         <div className="space-y-6">
           <div
-            className="border p-6"
-            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
-          >
-            <h2 className="text-sm font-semibold tracking-wide mb-4">Add Walk-In Reservation</h2>
-            <form onSubmit={handleWalkInCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                required
-                placeholder="Guest name"
-                value={walkInForm.guestName}
-                onChange={(e) => setWalkInForm({ ...walkInForm, guestName: e.target.value })}
-                className="px-3 py-2 text-sm border rounded"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-              />
-              <input
-                required
-                type="email"
-                placeholder="Guest email"
-                value={walkInForm.guestEmail}
-                onChange={(e) => setWalkInForm({ ...walkInForm, guestEmail: e.target.value })}
-                className="px-3 py-2 text-sm border rounded"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-              />
-              <select
-                value={walkInForm.roomName}
-                onChange={(e) => setWalkInForm({ ...walkInForm, roomName: e.target.value, totalPrice: Number(e.target.value === 'Deluxe King Suite' ? 320 : e.target.value === 'Executive Penthouse' ? 580 : 189) })}
-                className="px-3 py-2 text-sm border rounded"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-              >
-                <option value="Classic Double Room">Classic Double Room</option>
-                <option value="Deluxe King Suite">Deluxe King Suite</option>
-                <option value="Executive Penthouse">Executive Penthouse</option>
-              </select>
-              <input
-                required
-                type="date"
-                value={walkInForm.checkIn}
-                onChange={(e) => setWalkInForm({ ...walkInForm, checkIn: e.target.value })}
-                className="px-3 py-2 text-sm border rounded"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-              />
-              <input
-                required
-                type="date"
-                value={walkInForm.checkOut}
-                onChange={(e) => setWalkInForm({ ...walkInForm, checkOut: e.target.value })}
-                className="px-3 py-2 text-sm border rounded"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-              />
-              <input
-                required
-                type="number"
-                min="1"
-                max="4"
-                value={walkInForm.guests}
-                onChange={(e) => setWalkInForm({ ...walkInForm, guests: Number(e.target.value) })}
-                className="px-3 py-2 text-sm border rounded"
-                style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm tracking-wide"
-                style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-              >
-                Create Walk-In Booking
-              </button>
-            </form>
+  className="border p-4 sm:p-6"
+  style={{
+    backgroundColor: 'var(--card)',
+    borderColor: 'var(--border)',
+  }}
+>
+  <div className="mb-6">
+    <p
+      className="text-xs tracking-[0.3em] uppercase mb-2"
+      style={{ color: 'var(--accent)' }}
+    >
+      Front Desk
+    </p>
+
+    <h2 className="text-xl sm:text-2xl font-semibold">
+      Create Reservation
+    </h2>
+
+    <p
+      className="text-sm mt-1"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Add a walk-in or front desk booking.
+    </p>
+  </div>
+
+  <form
+    onSubmit={handleWalkInCreate}
+    className="space-y-5"
+  >
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="min-w-0">
+        <label
+          className="block text-xs tracking-wide uppercase mb-2"
+          style={{ color: 'var(--muted-foreground)' }}
+        >
+          Guest Name
+        </label>
+
+        <input
+          required
+          placeholder="Enter guest name"
+          value={walkInForm.guestName}
+          onChange={(e) =>
+            setWalkInForm({
+              ...walkInForm,
+              guestName: e.target.value,
+            })
+          }
+          className="w-full min-w-0 px-4 py-3 text-sm border"
+          style={{
+            borderColor: 'var(--border)',
+            backgroundColor: 'transparent',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      <div className="min-w-0">
+        <label
+          className="block text-xs tracking-wide uppercase mb-2"
+          style={{ color: 'var(--muted-foreground)' }}
+        >
+          Guest Email
+        </label>
+
+        <input
+          required
+          type="email"
+          placeholder="guest@email.com"
+          value={walkInForm.guestEmail}
+          onChange={(e) =>
+            setWalkInForm({
+              ...walkInForm,
+              guestEmail: e.target.value,
+            })
+          }
+          className="w-full min-w-0 px-4 py-3 text-sm border"
+          style={{
+            borderColor: 'var(--border)',
+            backgroundColor: 'transparent',
+            outline: 'none',
+          }}
+        />
+      </div>
+    </div>
+
+    <div>
+      <label
+        className="block text-xs tracking-wide uppercase mb-2"
+        style={{ color: 'var(--muted-foreground)' }}
+      >
+        Select Room
+      </label>
+
+      <select
+        required
+        value={walkInForm.roomId}
+        onChange={(e) => {
+          const selectedRoom = rooms.find(
+            (room) => room.id === e.target.value
+          )
+
+          setWalkInForm({
+            ...walkInForm,
+            roomId: e.target.value,
+            guests: Math.min(
+              walkInForm.guests,
+              selectedRoom?.capacity ?? 2
+            ),
+          })
+        }}
+        className="w-full min-w-0 px-4 py-3 text-sm border"
+        style={{
+          borderColor: 'var(--border)',
+          backgroundColor: 'var(--card)',
+          outline: 'none',
+        }}
+      >
+        <option value="">Choose a room</option>
+
+        {rooms
+          .filter((room) => room.status === 'available')
+          .map((room) => (
+            <option
+              key={room.id}
+              value={room.id}
+            >
+              {room.name} — {formatPeso(room.price)} / night
+            </option>
+          ))}
+      </select>
+
+      {selectedWalkInRoom && (
+        <div
+          className="mt-3 p-3 border text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+          style={{
+            borderColor: 'var(--border)',
+            backgroundColor: 'var(--background)',
+          }}
+        >
+          <div>
+            <p className="font-medium">
+              {selectedWalkInRoom.name}
+            </p>
+
+            <p
+              className="text-xs mt-1"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              Floor {selectedWalkInRoom.floor} · Up to{' '}
+              {selectedWalkInRoom.capacity ?? 2} guests
+            </p>
           </div>
+
+          <p
+            className="font-semibold"
+            style={{ color: 'var(--accent)' }}
+          >
+            {formatPeso(selectedWalkInRoom.price)}
+            <span
+              className="text-xs font-normal"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              {' '} / night
+            </span>
+          </p>
+        </div>
+      )}
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="min-w-0">
+        <label
+          className="block text-xs tracking-wide uppercase mb-2"
+          style={{ color: 'var(--muted-foreground)' }}
+        >
+          Check-In
+        </label>
+
+        <input
+          required
+          type="date"
+          value={walkInForm.checkIn}
+          onChange={(e) =>
+            setWalkInForm({
+              ...walkInForm,
+              checkIn: e.target.value,
+            })
+          }
+          className="w-full min-w-0 px-4 py-3 text-sm border"
+          style={{
+            borderColor: 'var(--border)',
+            backgroundColor: 'transparent',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      <div className="min-w-0">
+        <label
+          className="block text-xs tracking-wide uppercase mb-2"
+          style={{ color: 'var(--muted-foreground)' }}
+        >
+          Check-Out
+        </label>
+
+        <input
+          required
+          type="date"
+          min={walkInForm.checkIn || undefined}
+          value={walkInForm.checkOut}
+          onChange={(e) =>
+            setWalkInForm({
+              ...walkInForm,
+              checkOut: e.target.value,
+            })
+          }
+          className="w-full min-w-0 px-4 py-3 text-sm border"
+          style={{
+            borderColor: 'var(--border)',
+            backgroundColor: 'transparent',
+            outline: 'none',
+          }}
+        />
+      </div>
+    </div>
+
+    <div>
+      <label
+        className="block text-xs tracking-wide uppercase mb-2"
+        style={{ color: 'var(--muted-foreground)' }}
+      >
+        Number of Guests
+      </label>
+
+      <input
+        required
+        type="number"
+        min="1"
+        max={selectedWalkInRoom?.capacity ?? 1}
+        value={walkInForm.guests}
+        onChange={(e) =>
+          setWalkInForm({
+            ...walkInForm,
+            guests: Number(e.target.value),
+          })
+        }
+        className="w-full min-w-0 px-4 py-3 text-sm border"
+        style={{
+          borderColor: 'var(--border)',
+          backgroundColor: 'transparent',
+          outline: 'none',
+        }}
+      />
+
+      {selectedWalkInRoom && (
+        <p
+          className="text-xs mt-2"
+          style={{ color: 'var(--muted-foreground)' }}
+        >
+          Maximum {selectedWalkInRoom.capacity ?? 2} guests
+          for this room.
+        </p>
+      )}
+    </div>
+
+    <div
+      className="p-4 border"
+      style={{
+        borderColor: 'var(--border)',
+        backgroundColor: 'var(--background)',
+      }}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p
+            className="text-xs tracking-[0.2em] uppercase"
+            style={{ color: 'var(--muted-foreground)' }}
+          >
+            Reservation Total
+          </p>
+
+          {walkInNights > 0 && selectedWalkInRoom && (
+            <p
+              className="text-xs mt-1"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              {formatPeso(selectedWalkInRoom.price)} ×{' '}
+              {walkInNights} night
+              {walkInNights !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+
+        <p
+          className="text-xl sm:text-2xl font-semibold"
+          style={{ color: 'var(--accent)' }}
+        >
+          {formatPeso(walkInTotal)}
+        </p>
+      </div>
+    </div>
+
+    <button
+      type="submit"
+      className="w-full px-5 py-3.5 text-sm tracking-[0.15em] uppercase font-medium transition-opacity hover:opacity-90"
+      style={{
+        backgroundColor: 'var(--accent)',
+        color: 'white',
+      }}
+    >
+      Create Reservation
+    </button>
+  </form>
+</div>
           <div
             className="border overflow-hidden"
             style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
