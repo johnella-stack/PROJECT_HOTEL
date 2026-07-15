@@ -314,11 +314,8 @@ export default function Navbar({ page, navigate, user, setUser }: Props) {
                 My Bookings
               </button>
               <SignOutButton
-                variant="mobile"
-                onConfirm={() => {
-                  setUser(null)
-                  setOpen(false)
-                }}
+                  variant="mobile"
+                  onConfirm={handleSignOut}
               />
             </>
           ) : (

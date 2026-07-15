@@ -6,6 +6,7 @@ import {
 import type { Booking, Page } from '../../App'
 import {addBooking,
   loadBookings,
+  loadBookingsFromServer,
   updateBookingStatus,
 } from '../../lib/bookingStore'
 import { createRoomInServer, loadRoomsFromServer, persistStoredRooms, updateRoomInServer, type RoomRecord } from '../../lib/roomStore'
@@ -52,6 +53,52 @@ export default function AdminDashboard({ navigate }: Props) {
   checkOut: '',
   guests: 1,
 })
+const today = new Date().toISOString().split('T')[0]
+
+const getMinimumWalkInCheckOut = (checkIn: string) => {
+  if (!checkIn) return today
+
+  const date = new Date(`${checkIn}T00:00:00`)
+  date.setDate(date.getDate() + 1)
+
+  return date.toISOString().split('T')[0]
+}
+
+const minimumWalkInCheckOut =
+  getMinimumWalkInCheckOut(walkInForm.checkIn)
+  const availableWalkInRooms = useMemo(() => {
+  if (!walkInForm.checkIn || !walkInForm.checkOut) {
+    return []
+  }
+
+  return rooms.filter((room) => {
+    if (room.status !== 'available') {
+      return false
+    }
+
+    const hasDateConflict = reservations.some((booking) => {
+      if (booking.status === 'cancelled') {
+        return false
+      }
+
+      if (String(booking.room.id) !== String(room.id)) {
+        return false
+      }
+
+      return (
+        walkInForm.checkIn < booking.checkOut &&
+        walkInForm.checkOut > booking.checkIn
+      )
+    })
+
+    return !hasDateConflict
+  })
+}, [
+  rooms,
+  reservations,
+  walkInForm.checkIn,
+  walkInForm.checkOut,
+])
 const selectedWalkInRoom = useMemo(
   () => rooms.find((room) => room.id === walkInForm.roomId),
   [rooms, walkInForm.roomId]
@@ -82,8 +129,33 @@ const walkInTotal =
 
 
   useEffect(() => {
-    setReservations(loadBookings())
-  }, [])
+  let mounted = true
+
+  const syncReservations = async () => {
+    try {
+      const serverBookings = await loadBookingsFromServer()
+
+      if (mounted) {
+        setReservations(serverBookings)
+      }
+    } catch (error) {
+      console.error(
+        'Failed to load reservations from server:',
+        error
+      )
+
+      if (mounted) {
+        setReservations(loadBookings())
+      }
+    }
+  }
+
+  void syncReservations()
+
+  return () => {
+    mounted = false
+  }
+}, [])
 
   useEffect(() => {
     let mounted = true
@@ -113,22 +185,33 @@ const walkInTotal =
     }
   }, [rooms])
 
-  const confirmed = reservations.filter((r) => r.status === 'confirmed').length
-  const pending = reservations.filter((r) => r.status === 'pending').length
-  const revenue = reservations
-    .filter((r) => r.status === 'confirmed')
-    .reduce((sum, r) => sum + r.totalPrice, 0)
+  const confirmed = reservations.filter(
+  (r) => r.status === 'confirmed'
+).length
 
-  const filteredRes = useMemo(
-    () =>
-      reservations.filter(
-        (r) =>
-          r.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.room.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [reservations, searchQuery]
-  )
+const pending = reservations.filter(
+  (r) => r.status === 'pending'
+).length
+
+const revenue = reservations
+  .filter((r) => r.status === 'confirmed')
+  .reduce((sum, r) => sum + r.totalPrice, 0)
+
+const filteredRes = useMemo(() => {
+  const query = searchQuery.toLowerCase()
+
+  return reservations.filter((r) => {
+    const guestName = r.guestName ?? ''
+    const bookingId = r.id ?? ''
+    const roomName = r.room?.name ?? ''
+
+    return (
+      guestName.toLowerCase().includes(query) ||
+      bookingId.toLowerCase().includes(query) ||
+      roomName.toLowerCase().includes(query)
+    )
+  })
+}, [reservations, searchQuery])
 
 const updateStatus = async (
   id: string,
@@ -315,12 +398,9 @@ const updateStatus = async (
   try {
     const savedBooking = await addBooking(booking)
 
-    setReservations((current) => [
-      savedBooking,
-      ...current.filter(
-        (item) => item.id !== savedBooking.id
-      ),
-    ])
+    const serverBookings = await loadBookingsFromServer()
+
+setReservations(serverBookings)
 
     setWalkInForm({
       guestName: '',
@@ -501,7 +581,7 @@ const updateStatus = async (
                           {r.id}
                         </td>
                         <td className="px-6 py-3.5 font-medium">{r.guestName}</td>
-                        <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.room.name}</td>
+                        <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.room?.name ?? 'Unknown Room'}</td>
                         <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.checkIn}</td>
                         <td className="px-6 py-3.5 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatPeso(r.totalPrice)}</td>
                         <td className="px-6 py-3.5">
@@ -938,147 +1018,178 @@ const updateStatus = async (
       </div>
     </div>
 
-    <div>
-      <label
-        className="block text-xs tracking-wide uppercase mb-2"
-        style={{ color: 'var(--muted-foreground)' }}
+    {/* CHECK-IN / CHECK-OUT */}
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <div className="min-w-0">
+    <label
+      className="block text-xs tracking-wide uppercase mb-2"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Check-In
+    </label>
+
+    <input
+      required
+      type="date"
+      min={today}
+      value={walkInForm.checkIn}
+      onChange={(e) => {
+        const newCheckIn = e.target.value
+        const newMinimumCheckOut =
+          getMinimumWalkInCheckOut(newCheckIn)
+
+        setWalkInForm((current) => ({
+          ...current,
+          checkIn: newCheckIn,
+          checkOut:
+            !current.checkOut ||
+            current.checkOut < newMinimumCheckOut
+              ? newMinimumCheckOut
+              : current.checkOut,
+          roomId: '',
+          guests: 1,
+        }))
+      }}
+      className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
+      style={{
+        borderColor: 'var(--border)',
+        backgroundColor: 'transparent',
+        outline: 'none',
+      }}
+    />
+  </div>
+
+  <div className="min-w-0">
+    <label
+      className="block text-xs tracking-wide uppercase mb-2"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Check-Out
+    </label>
+
+    <input
+      required
+      type="date"
+      min={minimumWalkInCheckOut}
+      value={walkInForm.checkOut}
+      onChange={(e) =>
+        setWalkInForm((current) => ({
+          ...current,
+          checkOut: e.target.value,
+          roomId: '',
+          guests: 1,
+        }))
+      }
+      className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
+      style={{
+        borderColor: 'var(--border)',
+        backgroundColor: 'transparent',
+        outline: 'none',
+      }}
+    />
+  </div>
+</div>
+
+{/* SELECT AVAILABLE ROOM */}
+<div>
+  <label
+    className="block text-xs tracking-wide uppercase mb-2"
+    style={{ color: 'var(--muted-foreground)' }}
+  >
+    Select Room
+  </label>
+
+  <select
+    required
+    disabled={!walkInForm.checkIn || !walkInForm.checkOut}
+    value={walkInForm.roomId}
+    onChange={(e) => {
+      const selectedRoom = rooms.find(
+        (room) => room.id === e.target.value
+      )
+
+      setWalkInForm((current) => ({
+        ...current,
+        roomId: e.target.value,
+        guests: Math.min(
+          Math.max(current.guests, 1),
+          selectedRoom?.capacity ?? 2
+        ),
+      }))
+    }}
+    className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border disabled:opacity-50 disabled:cursor-not-allowed"
+    style={{
+      borderColor: 'var(--border)',
+      backgroundColor: 'var(--card)',
+      outline: 'none',
+    }}
+  >
+    <option value="">
+      {!walkInForm.checkIn || !walkInForm.checkOut
+        ? 'Select check-in and check-out dates first'
+        : availableWalkInRooms.length === 0
+          ? 'No rooms available for these dates'
+          : 'Choose an available room'}
+    </option>
+
+    {availableWalkInRooms.map((room) => (
+      <option
+        key={room.id}
+        value={room.id}
       >
-        Select Room
-      </label>
+        {room.name} — {formatPeso(room.price)} / night
+      </option>
+    ))}
+  </select>
 
-      <select
-        required
-        value={walkInForm.roomId}
-        onChange={(e) => {
-          const selectedRoom = rooms.find(
-            (room) => room.id === e.target.value
-          )
-
-          setWalkInForm({
-            ...walkInForm,
-            roomId: e.target.value,
-            guests: Math.min(
-              walkInForm.guests,
-              selectedRoom?.capacity ?? 2
-            ),
-          })
-        }}
-        className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
-        style={{
-          borderColor: 'var(--border)',
-          backgroundColor: 'var(--card)',
-          outline: 'none',
-        }}
+  {walkInForm.checkIn &&
+    walkInForm.checkOut &&
+    availableWalkInRooms.length === 0 && (
+      <p
+        className="text-xs mt-2"
+        style={{ color: '#dc2626' }}
       >
-        <option value="">Choose a room</option>
+        No available rooms for the selected dates.
+      </p>
+    )}
 
-        {rooms
-          .filter((room) => room.status === 'available')
-          .map((room) => (
-            <option
-              key={room.id}
-              value={room.id}
-            >
-              {room.name} — {formatPeso(room.price)} / night
-            </option>
-          ))}
-      </select>
+  {selectedWalkInRoom && (
+    <div
+      className="mt-3 p-3 border text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+      style={{
+        borderColor: 'var(--border)',
+        backgroundColor: 'var(--background)',
+      }}
+    >
+      <div>
+        <p className="font-medium">
+          {selectedWalkInRoom.name}
+        </p>
 
-      {selectedWalkInRoom && (
-        <div
-          className="mt-3 p-3 border text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-          style={{
-            borderColor: 'var(--border)',
-            backgroundColor: 'var(--background)',
-          }}
-        >
-          <div>
-            <p className="font-medium">
-              {selectedWalkInRoom.name}
-            </p>
-
-            <p
-              className="text-xs mt-1"
-              style={{ color: 'var(--muted-foreground)' }}
-            >
-              Floor {selectedWalkInRoom.floor} · Up to{' '}
-              {selectedWalkInRoom.capacity ?? 2} guests
-            </p>
-          </div>
-
-          <p
-            className="font-semibold"
-            style={{ color: 'var(--accent)' }}
-          >
-            {formatPeso(selectedWalkInRoom.price)}
-            <span
-              className="text-xs font-normal"
-              style={{ color: 'var(--muted-foreground)' }}
-            >
-              {' '} / night
-            </span>
-          </p>
-        </div>
-      )}
-    </div>
-
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="min-w-0">
-        <label
-          className="block text-xs tracking-wide uppercase mb-2"
+        <p
+          className="text-xs mt-1"
           style={{ color: 'var(--muted-foreground)' }}
         >
-          Check-In
-        </label>
-
-        <input
-          required
-          type="date"
-          value={walkInForm.checkIn}
-          onChange={(e) =>
-            setWalkInForm({
-              ...walkInForm,
-              checkIn: e.target.value,
-            })
-          }
-          className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
-          style={{
-            borderColor: 'var(--border)',
-            backgroundColor: 'transparent',
-            outline: 'none',
-          }}
-        />
+          Floor {selectedWalkInRoom.floor} · Up to{' '}
+          {selectedWalkInRoom.capacity ?? 2} guests
+        </p>
       </div>
 
-      <div className="min-w-0">
-        <label
-          className="block text-xs tracking-wide uppercase mb-2"
+      <p
+        className="font-semibold"
+        style={{ color: 'var(--accent)' }}
+      >
+        {formatPeso(selectedWalkInRoom.price)}
+        <span
+          className="text-xs font-normal"
           style={{ color: 'var(--muted-foreground)' }}
         >
-          Check-Out
-        </label>
-
-        <input
-          required
-          type="date"
-          min={walkInForm.checkIn || undefined}
-          value={walkInForm.checkOut}
-          onChange={(e) =>
-            setWalkInForm({
-              ...walkInForm,
-              checkOut: e.target.value,
-            })
-          }
-          className="block w-full max-w-full min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border box-border"
-          style={{
-            borderColor: 'var(--border)',
-            backgroundColor: 'transparent',
-            outline: 'none',
-          }}
-        />
-      </div>
+          {' '} / night
+        </span>
+      </p>
     </div>
-
+  )}
+</div>
   
       <div>
   <label

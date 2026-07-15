@@ -139,19 +139,19 @@ async function seedRooms() {
         available
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
      [
-  room.id,
-  room.name,
-  room.type,
-  Number(room.price),
-  room.status || 'available',
-  Number(room.floor) || 1,
-  room.image || null,
-  Number(room.size) || 28,
-  Number(room.capacity) || 2,
-  room.available === false ? 0 : 1,
-]
+      room.id,
+      room.name,
+      room.type,
+      Number(room.price),
+      room.status || 'available',
+      Number(room.floor) || 1,
+      room.image || null,
+      Number(room.size) || 28,
+      Number(room.capacity) || 2,
+      room.available === false ? 0 : 1,
+    ]
     )
-  }
+  } 
 
   const [rows] = await pool.query(
     'SELECT COUNT(*) as count FROM rooms'
@@ -324,37 +324,89 @@ app.post('/api/bookings', async (req, res) => {
     })
   }
 
+  let connection
+
   try {
-    const conflict = await hasBookingConflict(
-      roomId,
-      booking.checkIn,
-      booking.checkOut
+    connection = await pool.getConnection()
+
+    await connection.beginTransaction()
+
+    // Lock the selected room.
+    // Only one booking request for this room can continue at a time.
+    const [rooms] = await connection.query(
+      `
+        SELECT id, status
+        FROM rooms
+        WHERE id = ?
+        FOR UPDATE
+      `,
+      [roomId]
     )
 
-    if (conflict) {
-      return res.status(409).json({
-        message: 'This room is not available for the selected dates'
+    if (rooms.length === 0) {
+      await connection.rollback()
+
+      return res.status(404).json({
+        message: 'Room not found'
       })
     }
 
-    await pool.query(
-      `INSERT INTO bookings (
-        id,
-        room_id,
-        room_name,
-        room_type,
-        room_price,
-        room_image,
-        check_in,
-        check_out,
-        guests,
-        total_price,
-        guest_name,
-        guest_email,
-        payment_method,
-        status,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    if (rooms[0].status !== 'available') {
+      await connection.rollback()
+
+      return res.status(409).json({
+        message: 'This room is currently unavailable'
+      })
+    }
+
+    // Check for overlapping active reservations while room is locked.
+    const [conflicts] = await connection.query(
+      `
+        SELECT id
+        FROM bookings
+        WHERE room_id = ?
+          AND status <> 'cancelled'
+          AND check_in < ?
+          AND check_out > ?
+        LIMIT 1
+      `,
+      [
+        roomId,
+        booking.checkOut,
+        booking.checkIn
+      ]
+    )
+
+    if (conflicts.length > 0) {
+      await connection.rollback()
+
+      return res.status(409).json({
+        message:
+          'This room is no longer available for the selected dates. Please choose another room or different dates.'
+      })
+    }
+
+    await connection.query(
+      `
+        INSERT INTO bookings (
+          id,
+          room_id,
+          room_name,
+          room_type,
+          room_price,
+          room_image,
+          check_in,
+          check_out,
+          guests,
+          total_price,
+          guest_name,
+          guest_email,
+          payment_method,
+          status,
+          created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `,
       [
         booking.id,
         roomId,
@@ -373,13 +425,30 @@ app.post('/api/bookings', async (req, res) => {
       ]
     )
 
-    res.status(201).json(booking)
+    await connection.commit()
+
+    return res.status(201).json(booking)
   } catch (error) {
+    if (connection) {
+      try {
+        await connection.rollback()
+      } catch (rollbackError) {
+        console.error(
+          'Booking rollback error:',
+          rollbackError.message
+        )
+      }
+    }
+
     console.error('Create booking error:', error.message)
 
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Unable to create booking'
     })
+  } finally {
+    if (connection) {
+      connection.release()
+    }
   }
 })
 app.put('/api/bookings/:id/status', async (req, res) => {

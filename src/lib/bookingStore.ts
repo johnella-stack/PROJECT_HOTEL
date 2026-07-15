@@ -4,6 +4,67 @@ export const BOOKING_STORAGE_KEY = 'vernay-bookings'
 export const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000
 
 const API_URL = 'https://projecthotel-production.up.railway.app'
+export const loadBookingsFromServer = async (): Promise<Booking[]> => {
+  const response = await fetch(`${API_URL}/api/bookings`)
+
+  if (!response.ok) {
+    throw new Error('Failed to load bookings from server')
+  }
+
+  const data = await response.json()
+
+  const bookings: Booking[] = data.map((item: any) => ({
+    id: String(item.id),
+
+    room: item.room ?? {
+      id: String(item.room_id ?? ''),
+      name: item.room_name ?? 'Unknown Room',
+      type: item.room_type ?? 'standard',
+      price: Number(item.room_price ?? 0),
+      size: Number(item.room_size ?? 0),
+      capacity: Number(item.room_capacity ?? item.guests ?? 1),
+      available: true,
+      image: item.room_image ?? '',
+      features: [],
+      description: '',
+    },
+
+    checkIn: item.checkIn ?? item.check_in ?? '',
+    checkOut: item.checkOut ?? item.check_out ?? '',
+
+    guests: Number(item.guests ?? 1),
+
+    totalPrice: Number(
+      item.totalPrice ?? item.total_price ?? 0
+    ),
+
+    guestName:
+      item.guestName ??
+      item.guest_name ??
+      'Unknown Guest',
+
+    guestEmail:
+      item.guestEmail ??
+      item.guest_email ??
+      '',
+
+    paymentMethod:
+      item.paymentMethod ??
+      item.payment_method ??
+      'cash',
+
+    status: item.status ?? 'pending',
+
+    createdAt:
+      item.createdAt ??
+      item.created_at ??
+      new Date().toISOString(),
+  }))
+
+  persistBookings(bookings)
+
+  return bookings
+}
 
 const DEMO_ROOM: Room = {
   id: 'demo-room',
