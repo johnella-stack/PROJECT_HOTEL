@@ -853,7 +853,10 @@ app.get('/api/rooms/:id/availability', async (req, res) => {
 
     const room = rooms[0]
     const booked = await hasBookingConflict(req.params.id, String(checkIn), String(checkOut))
-    const available = Boolean(room.available) && room.status === 'available' && !booked
+    const available =
+  Boolean(room.available) &&
+  room.status !== 'maintenance' &&
+  !booked
 
     res.json({ available, bookedForDates: booked })
   } catch (error) {
