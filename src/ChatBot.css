@@ -150,3 +150,25 @@ cursor:pointer;
   max-width: 85%;
   white-space: pre-line;
 }
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.quick-actions button {
+  background: #f7f3ed;
+  border: 1px solid #d9c3a5;
+  color: #6b4e2e;
+  padding: 8px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.quick-actions button:hover {
+  background: #b58b5d;
+  color: white;
+}

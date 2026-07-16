@@ -38,6 +38,29 @@ const sendMessage = () => {
 
   setInput('')
 }
+const quickQuestion = (question: string) => {
+  setInput(question)
+
+  const lower = question.toLowerCase()
+
+  const found = hotelResponses.find(item =>
+    item.keywords.some(keyword => lower.includes(keyword))
+  )
+
+  const userMessage = {
+    sender: 'user',
+    text: question,
+  }
+
+  const botMessage = {
+    sender: 'bot',
+    text: found
+      ? found.answer
+      : "Sorry, I don't understand that yet.",
+  }
+
+  setMessages(prev => [...prev, userMessage, botMessage])
+}
 
   return (
     <>
@@ -65,6 +88,29 @@ const sendMessage = () => {
           </div>
 
           <div className="chatbot-body">
+            <div className="quick-actions">
+
+  <button onClick={() => quickQuestion('Book Room')}>
+    🏨 Book Room
+  </button>
+
+  <button onClick={() => quickQuestion('Room Availability')}>
+    📅 Availability
+  </button>
+
+  <button onClick={() => quickQuestion('Cancel Reservation')}>
+    ❌ Cancel
+  </button>
+
+  <button onClick={() => quickQuestion('Cleaning')}>
+    🧹 Cleaning
+  </button>
+
+  <button onClick={() => quickQuestion('Contact')}>
+    📞 Contact
+  </button>
+
+</div>
   {messages.map((message, index) => (
     <div
       key={index}
