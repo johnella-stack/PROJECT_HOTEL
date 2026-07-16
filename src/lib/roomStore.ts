@@ -190,10 +190,9 @@ export const toPublicRoom = (room: RoomRecord): Room => ({
     room.capacity ??
     (room.name.toLowerCase().includes('penthouse') ? 4 : 2),
 
-  available:
-    room.status === 'available' &&
-    room.available !== false &&
-    room.bookedForDates !== true,
+ available:
+  room.available !== false &&
+  room.bookedForDates !== true,
 
   image:
     room.image ??
