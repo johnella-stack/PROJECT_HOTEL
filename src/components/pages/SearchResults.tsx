@@ -133,6 +133,7 @@ const minimumCheckOut = getMinimumCheckOut(
   searchParams.checkOut
 )
         const nextRooms = serverRooms.map(toPublicRoom)
+        console.log("SERVER ROOMS", nextRooms)
         setRooms(nextRooms)
         persistStoredRooms(serverRooms)
         await syncBlockedDates(nextRooms)
