@@ -447,14 +447,13 @@ app.post('/api/bookings', async (req, res) => {
       })
     }
 
-    if (rooms[0].status !== 'available') {
-      await connection.rollback()
+   if (rooms[0].status === 'maintenance') {
+  await connection.rollback()
 
-      return res.status(409).json({
-        message: 'This room is currently unavailable'
-      })
-    }
-
+  return res.status(409).json({
+    message: 'This room is under maintenance'
+  })
+}
     // Check for overlapping active reservations while room is locked.
     const [conflicts] = await connection.query(
       `
@@ -648,12 +647,7 @@ app.put('/api/bookings/:id/status', async (req, res) => {
              THEN 'occupied'
              ELSE 'available'
            END,
-           available = CASE
-             WHEN DATE(?) >= DATE(?)
-              AND DATE(?) < DATE(?)
-             THEN 0
-             ELSE 1
-           END
+            available = 1
            WHERE id = ?
              AND status != 'maintenance'`,
           [
@@ -729,11 +723,11 @@ const syncAutomaticRoomStatuses = async () => {
     await pool.query(
       `
       UPDATE rooms r
-      SET
-        r.status = 'occupied',
-        r.available = 0
-      WHERE r.status != 'maintenance'
-        AND EXISTS (
+SET
+    r.status = 'occupied',
+    r.available = 1
+WHERE r.status != 'maintenance'
+  AND EXISTS (
           SELECT 1
           FROM bookings b
           WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
@@ -749,23 +743,23 @@ const syncAutomaticRoomStatuses = async () => {
     // If there is no active confirmed stay today,
     // the room must not remain stuck as occupied.
     await pool.query(
-      `
-      UPDATE rooms r
-      SET
-        r.status = 'available',
-        r.available = 1
-      WHERE r.status = 'occupied'
-        AND NOT EXISTS (
-          SELECT 1
-          FROM bookings b
-          WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
-            AND b.status = 'confirmed'
-            AND DATE(?) >= DATE(b.check_in)
-            AND DATE(?) < DATE(b.check_out)
-        )
-      `,
-      [today, today]
-    )
+  `
+  UPDATE rooms r
+SET
+    r.status = 'available',
+    r.available = 1
+WHERE r.status = 'occupied'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM bookings b
+      WHERE CAST(b.room_id AS CHAR) = CAST(r.id AS CHAR)
+        AND b.status = 'confirmed'
+        AND DATE(?) >= DATE(b.check_in)
+        AND DATE(?) < DATE(b.check_out)
+  )
+  `,
+  [today, today]
+)
 
     // 3. FINISHED STAY -> CLEANING
     // Only if the room has not been cleaned after checkout.
