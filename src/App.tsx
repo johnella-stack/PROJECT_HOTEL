@@ -7,6 +7,7 @@ import Confirmation from './components/pages/Confirmation'
 import Auth from './components/pages/Auth'
 import AdminDashboard from './components/pages/AdminDashboard'
 import MyBookings from './components/pages/MyBookings'
+import ChatBot from './ChatBot'
 
 export type Page = 'home' | 'search' | 'room' | 'confirm' | 'auth' | 'admin' | 'my-bookings'
 
@@ -123,6 +124,8 @@ export default function App() {
       {page === 'admin' && user?.role === 'admin' && (
         <AdminDashboard navigate={navigate} />
       )}
+      <ChatBot />
+
     </div>
   )
 }

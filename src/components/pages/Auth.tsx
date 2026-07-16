@@ -208,17 +208,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
               : 'Join Vernay to unlock exclusive member benefits.'}
           </p>
 
-          {/* Demo hint */}
-          <div
-            className="text-xs p-3 mb-6 border"
-            style={{
-              borderColor: 'rgba(176,125,58,0.25)',
-              backgroundColor: 'rgba(176,125,58,0.06)',
-              color: 'var(--muted-foreground)',
-            }}
-          >
-            Tip: Use any email containing "admin" to access the admin dashboard.
-          </div>
+         
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
