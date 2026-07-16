@@ -1,7 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { hotelResponses } from './hotelResponses'
 import './ChatBot.css'
+import { getRooms } from "./services/chatbotService"
 
+interface HotelRoom {
+  id: string
+  name: string
+  type: string
+  price: number
+  capacity: number
+  size: number
+  floor: number
+  status: string
+  available: boolean
+}
 type Message = {
   sender: 'user' | 'bot'
   text: string
@@ -17,6 +29,7 @@ export default function ChatBot() {
 
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
+  const [rooms, setRooms] = useState<HotelRoom[]>([])
   const [typing, setTyping] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -32,10 +45,23 @@ export default function ChatBot() {
   ])
 
   useEffect(() => {
-    if (open) {
-      inputRef.current?.focus()
+
+  const loadRooms = async () => {
+    try {
+      const data = await getRooms()
+      setRooms(data)
+    } catch (err) {
+      console.error(err)
     }
-  }, [open])
+  }
+
+  loadRooms()
+
+  if (open) {
+    inputRef.current?.focus()
+  }
+
+}, [open])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -43,16 +69,82 @@ export default function ChatBot() {
     })
   }, [messages, typing])
 
-  const findResponse = (question: string) => {
-    const lower = question.toLowerCase()
+ const findResponse = (question: string) => {
+  const lower = question.toLowerCase()
 
-    return hotelResponses.find((item) =>
-      item.keywords.some((keyword) => {
-        const words = keyword.toLowerCase().split(' ')
-        return words.every((word) => lower.includes(word))
-      })
-    )
+  // =========================
+  // CHEAPEST ROOM
+  // =========================
+  if (lower.includes("cheapest") || lower.includes("cheap")) {
+
+    const cheapest = [...rooms].sort((a, b) => a.price - b.price)[0]
+
+    if (cheapest) {
+      return {
+        answer: `💰 Cheapest Room
+
+🏨 ${cheapest.name}
+
+₱${cheapest.price} per night`
+      }
+    }
   }
+
+  // =========================
+  // LARGEST ROOM
+  // =========================
+  if (lower.includes("largest") || lower.includes("biggest")) {
+
+    const largest = [...rooms].sort((a, b) => b.size - a.size)[0]
+
+    if (largest) {
+      return {
+        answer: `🏨 Largest Room
+
+${largest.name}
+
+📐 ${largest.size} sqm`
+      }
+    }
+  }
+
+  // =========================
+  // SPECIFIC ROOM
+  // =========================
+  const room = rooms.find(r =>
+    lower.includes(r.name.toLowerCase())
+  )
+
+  if (room) {
+    return {
+      answer: `🏨 ${room.name}
+
+💰 Price: ₱${room.price}
+
+🛏 Type: ${room.type}
+
+👥 Capacity: ${room.capacity}
+
+📐 Size: ${room.size} sqm
+
+🏢 Floor: ${room.floor}
+
+📌 Status: ${room.status}`
+    }
+  }
+
+  // =========================
+  // DEFAULT RESPONSES
+  // =========================
+  return hotelResponses.find((item) =>
+    item.keywords.some((keyword) => {
+      const words = keyword.toLowerCase().split(" ")
+      return words.every((word) => lower.includes(word))
+    })
+  )
+}
+
+  
 
   const resetChat = () => {
     setTyping(false)
@@ -70,7 +162,31 @@ export default function ChatBot() {
   const sendMessage = () => {
     if (!input.trim()) return
 
-    const found = findResponse(input)
+    const room = rooms.find((r) =>
+  input.toLowerCase().includes(r.name.toLowerCase())
+)
+
+let found
+
+if (room) {
+  found = {
+    answer: `🏨 ${room.name}
+
+💰 Price: ₱${room.price}
+
+🛏 Type: ${room.type}
+
+👥 Capacity: ${room.capacity}
+
+📐 Size: ${room.size} sqm
+
+🏢 Floor: ${room.floor}
+
+📌 Status: ${room.status}`,
+  }
+} else {
+  found = findResponse(input)
+}
 
     const userMessage: Message = {
       sender: 'user',
