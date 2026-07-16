@@ -128,7 +128,10 @@ const minimumCheckOut = getMinimumCheckOut(
   useEffect(() => {
     const syncRooms = async () => {
       try {
-        const serverRooms = await loadRoomsFromServer(localParams.checkIn, localParams.checkOut)
+        const serverRooms = await loadRoomsFromServer(
+  searchParams.checkIn,
+  searchParams.checkOut
+)
         const nextRooms = serverRooms.map(toPublicRoom)
         setRooms(nextRooms)
         persistStoredRooms(serverRooms)
@@ -141,25 +144,31 @@ const minimumCheckOut = getMinimumCheckOut(
     syncRooms()
 
     // compute blocked date ranges for each room for the current search range
-    const syncBlockedDates = async () => {
-      if (!localParams.checkIn || !localParams.checkOut) return
+    const syncBlockedDates = async (currentRooms: Room[]) => {
+  if (!searchParams.checkIn || !searchParams.checkOut) return
 
-      try {
-        const next: Record<string, Set<string>> = {}
-        await Promise.all(
-          rooms.map(async (r) => {
-            try {
-              next[r.id] = await getBookedDatesForRoom(r.id, localParams.checkIn, localParams.checkOut)
-            } catch {
-              next[r.id] = new Set()
-            }
-          })
-        )
-        setBlockedByRoomId(next)
-      } catch {
-        setBlockedByRoomId({})
-      }
-    }
+  try {
+    const next: Record<string, Set<string>> = {}
+
+    await Promise.all(
+      currentRooms.map(async (r) => {
+        try {
+          next[r.id] = await getBookedDatesForRoom(
+            r.id,
+            searchParams.checkIn,
+            searchParams.checkOut
+          )
+        } catch {
+          next[r.id] = new Set()
+        }
+      })
+    )
+
+    setBlockedByRoomId(next)
+  } catch {
+    setBlockedByRoomId({})
+  }
+}
 
     window.addEventListener('vernay-rooms-updated', syncRooms)
     window.addEventListener('storage', syncRooms)
@@ -172,7 +181,10 @@ const minimumCheckOut = getMinimumCheckOut(
       window.removeEventListener('vernay-rooms-updated', syncRooms)
       window.removeEventListener('storage', syncRooms)
     }
-  }, [localParams.checkIn, localParams.checkOut])
+ }, [searchParams.checkIn, searchParams.checkOut])
+ useEffect(() => {
+  setLocalParams(searchParams)
+}, [searchParams])
 
   const filtered = useMemo(() => {
     let roomsToShow = rooms.filter((r) => {
