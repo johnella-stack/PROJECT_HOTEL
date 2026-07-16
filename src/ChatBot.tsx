@@ -1,68 +1,141 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { hotelResponses } from './hotelResponses'
 import './ChatBot.css'
 
+type Message = {
+  sender: 'user' | 'bot'
+  text: string
+  time: string
+}
+
 export default function ChatBot() {
+  const getTime = () =>
+    new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
   const [open, setOpen] = useState(false)
+  const [input, setInput] = useState('')
+  const [typing, setTyping] = useState(false)
 
-const [input, setInput] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-const [messages, setMessages] = useState([
-  {
-    sender: 'bot',
-    text: '👋 Hello! Welcome to Vernay Hotel.\n\nHow can I help you today?',
-  },
-])
-const sendMessage = () => {
-  if (!input.trim()) return
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      sender: 'bot',
+      time: getTime(),
+      text:
+        "👋 Welcome to Vernay Hotel!\n\nI'm your Virtual Concierge.\n\nI can help you with:\n\n🏨 Room Reservations\n📅 Room Availability\n❌ Cancellation\n🧹 Room Status\n🏨 Room Information\n📞 Contact Information\n\nHow may I assist you today?",
+    },
+  ])
 
-  const userMessage = {
-    sender: 'user',
-    text: input,
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus()
+    }
+  }, [open])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: 'smooth',
+    })
+  }, [messages, typing])
+
+  const findResponse = (question: string) => {
+    const lower = question.toLowerCase()
+
+    return hotelResponses.find((item) =>
+      item.keywords.some((keyword) => {
+        const words = keyword.toLowerCase().split(' ')
+        return words.every((word) => lower.includes(word))
+      })
+    )
   }
 
-  const lower = input.toLowerCase()
+  const resetChat = () => {
+    setTyping(false)
 
-  const found = hotelResponses.find((item) =>
-    item.keywords.some((keyword) => lower.includes(keyword))
-  )
-
-  const botMessage = {
-    sender: 'bot',
-    text: found
-      ? found.answer
-      : "I'm sorry, I don't understand that yet. Please try asking about booking, cancellation, room availability, maintenance, or check-in.",
+    setMessages([
+      {
+        sender: 'bot',
+        time: getTime(),
+        text:
+          "👋 Welcome to Vernay Hotel!\n\nI'm your Virtual Concierge.\n\nHow may I assist you today?",
+      },
+    ])
   }
 
-  setMessages((prev) => [...prev, userMessage, botMessage])
+  const sendMessage = () => {
+    if (!input.trim()) return
 
-  setInput('')
-}
-const quickQuestion = (question: string) => {
-  setInput(question)
+    const found = findResponse(input)
 
-  const lower = question.toLowerCase()
+    const userMessage: Message = {
+      sender: 'user',
+      text: input,
+      time: getTime(),
+    }
 
-  const found = hotelResponses.find(item =>
-    item.keywords.some(keyword => lower.includes(keyword))
-  )
+    const botMessage: Message = {
+      sender: 'bot',
+      time: getTime(),
+      text:
+        found?.answer ??
+        `I'm sorry, I couldn't understand your question.
 
-  const userMessage = {
-    sender: 'user',
-    text: question,
+Try asking about:
+
+🏨 Booking a room
+📅 Room availability
+❌ Cancellation
+🧹 Cleaning
+🔧 Maintenance
+🏨 Deluxe King Suite
+🏨 Executive Penthouse
+📞 Contact Information`,
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+
+    setTyping(true)
+
+    setTimeout(() => {
+      setMessages((prev) => [...prev, botMessage])
+      setTyping(false)
+    }, 1000)
+
+    setInput('')
   }
 
-  const botMessage = {
-    sender: 'bot',
-    text: found
-      ? found.answer
-      : "Sorry, I don't understand that yet.",
+  const quickQuestion = (question: string) => {
+    const found = findResponse(question)
+
+    const userMessage: Message = {
+      sender: 'user',
+      text: question,
+      time: getTime(),
+    }
+
+    const botMessage: Message = {
+      sender: 'bot',
+      time: getTime(),
+      text:
+        found?.answer ??
+        "I'm sorry, I couldn't understand your question.",
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+
+    setTyping(true)
+
+    setTimeout(() => {
+      setMessages((prev) => [...prev, botMessage])
+      setTyping(false)
+    }, 1000)
   }
-
-  setMessages(prev => [...prev, userMessage, botMessage])
-}
-
-  return (
+    return (
     <>
       {/* Floating Button */}
       <button
@@ -72,76 +145,177 @@ const quickQuestion = (question: string) => {
         💬
       </button>
 
-      {/* Chat Window */}
       {open && (
         <div className="chatbot-window">
 
+          {/* Header */}
           <div className="chatbot-header">
-            <span>🤖 Vernay Assistant</span>
 
-            <button
-              className="chatbot-close"
-              onClick={() => setOpen(false)}
-            >
-              ✕
-            </button>
+            <div className="chatbot-title">
+
+              <div className="hotel-avatar">
+                🏨
+              </div>
+
+              <div>
+                <div className="hotel-name">
+                  Vernay Virtual Concierge
+                </div>
+
+                <div className="hotel-status">
+                  ● Online
+                </div>
+              </div>
+
+            </div>
+
+            <div className="chatbot-actions">
+
+              <button
+                className="chatbot-clear"
+                onClick={resetChat}
+                title="Clear Chat"
+              >
+                🗑
+              </button>
+
+              <button
+                className="chatbot-close"
+                onClick={() => setOpen(false)}
+              >
+                ✕
+              </button>
+
+            </div>
+
           </div>
 
+          {/* Body */}
+
           <div className="chatbot-body">
-            <div className="quick-actions">
 
-  <button onClick={() => quickQuestion('Book Room')}>
-    🏨 Book Room
-  </button>
+            {messages.length === 1 && (
 
-  <button onClick={() => quickQuestion('Room Availability')}>
-    📅 Availability
-  </button>
+              <div className="quick-actions">
 
-  <button onClick={() => quickQuestion('Cancel Reservation')}>
-    ❌ Cancel
-  </button>
+                <button
+                  onClick={() => quickQuestion('Book Room')}
+                >
+                  🏨 Book Room
+                </button>
 
-  <button onClick={() => quickQuestion('Cleaning')}>
-    🧹 Cleaning
-  </button>
+                <button
+                  onClick={() => quickQuestion('Room Availability')}
+                >
+                  📅 Availability
+                </button>
 
-  <button onClick={() => quickQuestion('Contact')}>
-    📞 Contact
-  </button>
+                <button
+                  onClick={() => quickQuestion('Deluxe King Suite')}
+                >
+                  🛏 Deluxe Suite
+                </button>
 
-</div>
-  {messages.map((message, index) => (
-    <div
-      key={index}
-      className={
-        message.sender === 'user'
-          ? 'user-message'
-          : 'bot-message'
-      }
-    >
-      {message.text}
-    </div>
-  ))}
-</div>
+                <button
+                  onClick={() => quickQuestion('Executive Penthouse')}
+                >
+                  👑 Penthouse
+                </button>
 
-         <div className="chatbot-footer">
-  <input
-    value={input}
-    onChange={(e) => setInput(e.target.value)}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter') sendMessage()
-    }}
-    placeholder="Type your question..."
-  />
+                <button
+                  onClick={() => quickQuestion('Cancel Reservation')}
+                >
+                  ❌ Cancel
+                </button>
 
-  <button onClick={sendMessage}>
-    Send
-  </button>
-</div>
+                <button
+                  onClick={() => quickQuestion('Cleaning')}
+                >
+                  🧹 Cleaning
+                </button>
+
+                <button
+                  onClick={() => quickQuestion('Contact')}
+                >
+                  📞 Contact
+                </button>
+
+              </div>
+
+            )}
+
+            {messages.map((message, index) => (
+
+              <div
+                key={index}
+                className={
+                  message.sender === 'user'
+                    ? 'user-message'
+                    : 'bot-message'
+                }
+              >
+
+                {message.text}
+
+                <div className="message-time">
+                  {message.time}
+                </div>
+
+              </div>
+
+            ))}
+
+            {typing && (
+
+              <div className="bot-message">
+
+                🤖 Vernay Virtual Concierge
+
+                <div className="typing">
+
+                  <span></span>
+
+                  <span></span>
+
+                  <span></span>
+
+                </div>
+
+              </div>
+
+            )}
+
+            <div ref={bottomRef}></div>
+
+          </div>
+
+          {/* Footer */}
+
+          <div className="chatbot-footer">
+
+            <input
+              ref={inputRef}
+              value={input}
+              placeholder="Ask me anything about Vernay Hotel..."
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  sendMessage()
+                }
+              }}
+            />
+
+            <button
+              onClick={sendMessage}
+            >
+              Send
+            </button>
+
+          </div>
 
         </div>
       )}
+
     </>
   )
 }
