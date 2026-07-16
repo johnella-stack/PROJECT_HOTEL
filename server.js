@@ -174,7 +174,9 @@ const mapRoom = (row, bookedForDates = false) => ({
   image: row.image ?? undefined,
   size: row.size ?? undefined,
   capacity: row.capacity ?? undefined,
-  available: Boolean(row.available) && row.status === 'available' && !bookedForDates,
+  available:
+  row.status !== 'maintenance' &&
+  !bookedForDates,
   bookedForDates,
 })
 

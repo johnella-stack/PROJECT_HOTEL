@@ -34,7 +34,7 @@ export interface Room {
   image: string
   features: string[]
   description: string
-  status?: 'available' | 'occupied' | 'maintenance'
+  status?: 'available' | 'occupied' | 'cleaning'| 'maintenance'
   floor?: number
   lastCleaned?: string
 }
