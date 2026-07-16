@@ -530,15 +530,8 @@ const minimumCheckOut = getMinimumCheckOut(
                 </div>
                 <button
                   onClick={() => handleBook(room)}
-                  disabled={
-                    !room.available ||
-                    (blockedByRoomId[room.id]?.size ?? 0) > 0
-                  }
-                  title={
-                    blockedByRoomId[room.id]?.size
-                      ? 'Not available for the selected dates'
-                      : undefined
-                  }
+                  disabled={false}
+                  title={undefined}
                   className="self-start px-6 py-2.5 text-sm tracking-widests uppercase transition-opacity hover:opacity-85 disabled:opacity-50 disabled:hover:opacity-50"
                   style={{
                     backgroundColor: !room.available ? 'transparent' : 'var(--primary)',
