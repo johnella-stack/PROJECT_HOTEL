@@ -135,6 +135,7 @@ const minimumCheckOut = getMinimumCheckOut(
         const nextRooms = serverRooms.map(toPublicRoom)
         setRooms(nextRooms)
         persistStoredRooms(serverRooms)
+        await syncBlockedDates(nextRooms)
       } catch {
         setRooms(ALL_ROOMS)
       }
@@ -172,9 +173,6 @@ const minimumCheckOut = getMinimumCheckOut(
 
     window.addEventListener('vernay-rooms-updated', syncRooms)
     window.addEventListener('storage', syncRooms)
-
-    // initial blocked sync
-    syncBlockedDates()
 
     return () => {
 
