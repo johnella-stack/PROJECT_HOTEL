@@ -15,9 +15,7 @@ export default function ForgotPassword({ navigate }: Props) {
   console.log("Button clicked!")
 
   try {
-    const response = await fetch(
-  "http://localhost:3001/api/forgot-password",
-      {
+    const response = await fetch('https://projecthotel-production.up.railway.app/api/forgot-password', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

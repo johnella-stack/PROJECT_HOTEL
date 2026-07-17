@@ -21,9 +21,7 @@ export default function ResetPassword({ token }: Props) {
     setLoading(true)
 
     try {
-      const response = await fetch(
-        'http://localhost:3001/api/reset-password',
-        {
+      const response = await fetch('https://projecthotel-production.up.railway.app/api/reset-password', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
