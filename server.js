@@ -440,7 +440,7 @@ app.post('/api/forgot-password', async (req, res) => {
     )
 
     const resetLink =
-`http://localhost:8443/?resetToken=${token}`
+`https://projecthotel-production.up.railway.app/?resetToken=${token}`
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
