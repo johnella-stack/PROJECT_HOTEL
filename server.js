@@ -7,6 +7,8 @@ import { Resend } from 'resend'
 import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
+
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 dotenv.config()
@@ -28,6 +30,12 @@ const pool = mysql.createPool({
   user: process.env.MYSQLUSER,
   password: process.env.MYSQLPASSWORD,
   database: process.env.MYSQLDATABASE,
+
+  ssl: {
+    ca: fs.readFileSync('./certs/isrgrootx1.pem'),
+    rejectUnauthorized: true
+  },
+
   waitForConnections: true,
   connectionLimit: 10,
 })
