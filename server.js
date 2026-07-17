@@ -10,8 +10,10 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 dotenv.config()
+
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
 console.log('MYSQLPORT:', process.env.MYSQLPORT)
 console.log('MYSQLUSER:', process.env.MYSQLUSER)
@@ -32,8 +34,8 @@ const pool = mysql.createPool({
   database: process.env.MYSQLDATABASE,
 
   ssl: {
-    ca: fs.readFileSync('./certs/isrgrootx1.pem'),
-    rejectUnauthorized: true
+      minVersion: 'TLSv1.2',
+    rejectUnauthorized: false
   },
 
   waitForConnections: true,
