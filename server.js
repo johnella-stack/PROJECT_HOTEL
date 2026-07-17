@@ -1,10 +1,18 @@
 import bcrypt from 'bcryptjs'
+import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import mysql from 'mysql2/promise'
+import nodemailer from 'nodemailer'
+import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+dotenv.config()
+console.log('MYSQLHOST:', process.env.MYSQLHOST)
+console.log('MYSQLPORT:', process.env.MYSQLPORT)
+console.log('MYSQLUSER:', process.env.MYSQLUSER)
+console.log('MYSQLDATABASE:', process.env.MYSQLDATABASE)
 const app = express()
 const port = process.env.PORT || 3001
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -21,6 +29,13 @@ const pool = mysql.createPool({
   database: process.env.MYSQLDATABASE,
   waitForConnections: true,
   connectionLimit: 10,
+})
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
 })
 const DEFAULT_ROOMS = [
  { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'available', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 1 },
@@ -122,6 +137,15 @@ try {
 
   console.log('Database tables ready')
 }
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`)
 
 async function seedRooms() {
   for (const room of DEFAULT_ROOMS) {
@@ -383,7 +407,133 @@ app.post('/api/login', async (req, res) => {
     })
   }
 })
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body
 
+  if (!email) {
+    return res.status(400).json({
+      message: 'Email is required'
+    })
+  }
+
+  try {
+    const [users] = await pool.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email.toLowerCase()]
+    )
+
+    // Don't reveal whether the email exists
+    if (!users.length) {
+      return res.json({
+        message: 'If that email exists, a password reset link has been sent.'
+      })
+    }
+
+    const token = crypto.randomBytes(32).toString('hex')
+
+    const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+    await pool.query(
+      `INSERT INTO password_resets (email, token, expires_at)
+       VALUES (?, ?, ?)`,
+      [email.toLowerCase(), token, expires]
+    )
+
+    const resetLink =
+`http://localhost:8443/?resetToken=${token}`
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Vernay Hotel Password Reset',
+      html: `
+        <h2>Password Reset</h2>
+
+        <p>You requested to reset your password.</p>
+
+        <p>
+          <a href="${resetLink}">
+            Click here to reset your password
+          </a>
+        </p>
+
+        <p>This link expires in 1 hour.</p>
+
+        <p>If you didn't request this, ignore this email.</p>
+      `
+    })
+
+    res.json({
+      message: 'Password reset email sent.'
+    })
+
+  } catch (error) {
+    console.error(error)
+
+    res.status(500).json({
+      message: 'Unable to send reset email.'
+    })
+  }
+})
+app.post('/api/reset-password', async (req, res) => {
+  const { token, password } = req.body
+
+  if (!token || !password) {
+    return res.status(400).json({
+      message: 'Token and password are required.'
+    })
+  }
+
+  try {
+    // Find valid token
+    const [tokens] = await pool.query(
+      `SELECT email
+       FROM password_resets
+       WHERE token = ?
+         AND expires_at > NOW()
+       LIMIT 1`,
+      [token]
+    )
+
+    if (!tokens.length) {
+      return res.status(400).json({
+        message: 'Invalid or expired reset link.'
+      })
+    }
+
+    const email = tokens[0].email
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 12)
+
+    // Update user password
+    await pool.query(
+      `UPDATE users
+       SET password = ?
+       WHERE email = ?`,
+      [hashedPassword, email]
+    )
+
+    // Delete the used token
+    await pool.query(
+      `DELETE FROM password_resets
+       WHERE token = ?`,
+      [token]
+    )
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully.'
+    })
+
+  } catch (error) {
+    console.error('Reset password error:', error)
+
+    res.status(500).json({
+      message: 'Unable to reset password.'
+    })
+  }
+})
 app.get('/api/users', async (_req, res) => {
   try {
     const [users] = await pool.query('SELECT id, name, email, role FROM users ORDER BY id')
@@ -986,6 +1136,28 @@ if (isMarkingAsCleaned) {
   }
 })
 
+
+app.get('/api/test-email', async (req, res) => {
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: 'Vernay Hotel Test Email',
+      text: 'Congratulations! Your Hotel Reservation System can now send emails.'
+    })
+
+    res.json({
+      success: true,
+      message: 'Email sent successfully!'
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })

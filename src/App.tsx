@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
 import Home from './components/pages/Home'
 import SearchResults from './components/pages/SearchResults'
@@ -8,8 +8,19 @@ import Auth from './components/pages/Auth'
 import AdminDashboard from './components/pages/AdminDashboard'
 import MyBookings from './components/pages/MyBookings'
 import ChatBot from './ChatBot'
+import ForgotPassword from './components/pages/ForgotPassword'
+import ResetPassword from './components/pages/ResetPassword'
 
-export type Page = 'home' | 'search' | 'room' | 'confirm' | 'auth' | 'admin' | 'my-bookings'
+export type Page =
+  | 'home'
+  | 'search'
+  | 'room'
+  | 'confirm'
+  | 'auth'
+  | 'forgot-password'
+  | 'reset-password'
+  | 'admin'
+  | 'my-bookings'
 
 export interface User {
   name: string
@@ -56,7 +67,18 @@ export interface Booking {
 
 export default function App() {
   const [page, setPage] = useState<Page>('home')
+  const [resetToken, setResetToken] = useState('')
   const [user, setUser] = useState<User | null>(null)
+   useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+
+  const token = params.get('resetToken')
+
+  if (token) {
+    setResetToken(token)
+    setPage('reset-password')
+  }
+}, [])
   const [pendingRoom, setPendingRoom] = useState<Room | null>(null)
   const [searchParams, setSearchParams] = useState<SearchParams>({
     checkIn: '',
@@ -121,6 +143,16 @@ export default function App() {
       {page === 'auth' && (
         <Auth navigate={navigate} setUser={setUser} onAuthSuccess={handleAuthSuccess} />
       )}
+      {page === 'reset-password' && (
+  <ResetPassword
+    token={resetToken}
+  />
+)}
+      {page === 'forgot-password' && (
+  <ForgotPassword
+    navigate={navigate}
+  />
+)}
       {page === 'admin' && user?.role === 'admin' && (
         <AdminDashboard navigate={navigate} />
       )}

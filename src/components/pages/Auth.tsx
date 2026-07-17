@@ -433,21 +433,28 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
             </button>
           </form>
 
-          {mode === 'login' && (
-            <p
-              className="text-center text-xs mt-6"
-              style={{ color: 'var(--muted-foreground)' }}
-            >
-              Don't have an account?{' '}
-              <button
-                onClick={() => setMode('register')}
-                className="underline"
-                style={{ color: 'var(--accent)' }}
-              >
-                Register
-              </button>
-            </p>
-          )}
+         {mode === 'login' && (
+  <div className="text-center text-xs mt-6">
+    <button
+      onClick={() => navigate('forgot-password')}
+      className="underline block mb-3"
+      style={{ color: 'var(--accent)' }}
+    >
+      Forgot Password?
+    </button>
+
+    <p style={{ color: 'var(--muted-foreground)' }}>
+      Don't have an account?{' '}
+      <button
+        onClick={() => setMode('register')}
+        className="underline"
+        style={{ color: 'var(--accent)' }}
+      >
+        Register
+      </button>
+    </p>
+  </div>
+)}
         </div>
       </div>
     </div>
