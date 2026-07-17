@@ -38,6 +38,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 })
 const DEFAULT_ROOMS = [
  { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'available', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 1 },
@@ -443,7 +446,8 @@ app.post('/api/forgot-password', async (req, res) => {
 
     const resetLink =
 `https://projecthotel-production.up.railway.app/?resetToken=${token}`
-
+await transporter.verify()
+console.log("✅ SMTP connection successful")
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
