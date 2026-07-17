@@ -437,7 +437,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const resetLink =
 `https://projecthotel-production.up.railway.app/?resetToken=${token}`
     await resend.emails.send({
-  from: 'vernayhotel.noreply@gmail.com',
+  from: 'onboarding@resend.dev',
   to: email,
   subject: 'Vernay Hotel Password Reset',
   html: `
