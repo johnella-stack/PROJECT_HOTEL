@@ -11,6 +11,8 @@
     "server": "node server.js"
   },
   "dependencies": {
+    "@emnapi/core": "^1.11.2",
+    "@emnapi/runtime": "^1.11.2",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
     "concurrently": "^10.0.3",
