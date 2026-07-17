@@ -436,8 +436,6 @@ app.post('/api/forgot-password', async (req, res) => {
 
     const resetLink =
 `https://projecthotel-production.up.railway.app/?resetToken=${token}`
-await transporter.verify()
-console.log("✅ SMTP connection successful")
     await resend.emails.send({
   from: 'onboarding@resend.dev',
   to: email,
@@ -1132,28 +1130,6 @@ if (isMarkingAsCleaned) {
   }
 })
 
-
-app.get('/api/test-email', async (req, res) => {
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: 'Vernay Hotel Test Email',
-      text: 'Congratulations! Your Hotel Reservation System can now send emails.'
-    })
-
-    res.json({
-      success: true,
-      message: 'Email sent successfully!'
-    })
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({
-      success: false,
-      error: error.message
-    })
-  }
-})
 app.get('/{*path}', (_req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })
