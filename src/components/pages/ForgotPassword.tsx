@@ -15,7 +15,7 @@ export default function ForgotPassword({ navigate }: Props) {
   console.log("Button clicked!")
 
   try {
-    const response = await fetch('https://projecthotel-production.up.railway.app/api/forgot-password', {
+    const response = await fetch('https://project-hotel-xz49.onrender.com/api/forgot-password', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

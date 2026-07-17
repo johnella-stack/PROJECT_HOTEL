@@ -3,7 +3,7 @@ import type { Booking } from '../App'
 export const BOOKING_STORAGE_KEY = 'vernay-bookings'
 export const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000
 
-const API_URL = 'https://projecthotel-production.up.railway.app'
+const API_URL = 'https://project-hotel-xz49.onrender.com'
 export const loadBookingsFromServer = async (): Promise<Booking[]> => {
   const response = await fetch(`${API_URL}/api/bookings`)
 

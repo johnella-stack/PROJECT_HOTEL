@@ -434,8 +434,7 @@ app.post('/api/forgot-password', async (req, res) => {
       [email.toLowerCase(), token, expires]
     )
 
-    const resetLink =
-`https://projecthotel-production.up.railway.app/?resetToken=${token}`
+  const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
     await resend.emails.send({
   from: 'onboarding@resend.dev',
   to: email,

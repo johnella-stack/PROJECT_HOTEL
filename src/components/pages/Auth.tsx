@@ -25,7 +25,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
 
   const authenticateWithServer = async (payload: { email: string; password: string; name?: string; role?: 'guest' | 'admin' }) => {
-    const response = await fetch('https://projecthotel-production.up.railway.app/api/login', {
+    const response = await fetch('https://project-hotel-xz49.onrender.com/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -74,7 +74,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     if (mode === 'register') {
       setLoading(true)
       try {
-        const response = await fetch('https://projecthotel-production.up.railway.app/api/register', {
+        const response = await fetch('https://project-hotel-xz49.onrender.com/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

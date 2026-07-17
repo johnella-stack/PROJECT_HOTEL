@@ -21,7 +21,7 @@ export interface RoomRecord {
   bookedForDates?: boolean
 }
 
-const API_URL = 'https://projecthotel-production.up.railway.app'
+const API_URL = 'https://project-hotel-xz49.onrender.com'
 
 const fallbackImage = (name: string, type: string) => {
   const normalizedName = name.toLowerCase()

@@ -1,4 +1,4 @@
-const API_URL = "https://projecthotel-production.up.railway.app"
+const API_URL = "https://project-hotel-xz49.onrender.com"
 
 export async function getRooms() {
   const response = await fetch(`${API_URL}/api/rooms`)
