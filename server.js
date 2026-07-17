@@ -31,11 +31,13 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 })
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    pass: process.env.EMAIL_PASS,
+  },
 })
 const DEFAULT_ROOMS = [
  { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'available', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 1 },
