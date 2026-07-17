@@ -3,11 +3,12 @@ import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import mysql from 'mysql2/promise'
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+const resend = new Resend(process.env.RESEND_API_KEY)
 dotenv.config()
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
 console.log('MYSQLPORT:', process.env.MYSQLPORT)
@@ -30,18 +31,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
 })
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-})
+
 const DEFAULT_ROOMS = [
  { id: '101', name: 'Classic Double Room', type: 'Standard', price: 189, status: 'available', floor: 1, last_cleaned: '2026-07-08 09:00', image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&h=480&fit=crop&auto=format', size: 28, capacity: 2, available: 1 },
   { id: '205', name: 'Superior Twin Room', type: 'Standard', price: 210, status: 'available', floor: 2, last_cleaned: '2026-07-08 10:15', image: 'https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=700&h=480&fit=crop&auto=format', size: 32, capacity: 2, available: 1 },
@@ -448,30 +438,30 @@ app.post('/api/forgot-password', async (req, res) => {
 `https://projecthotel-production.up.railway.app/?resetToken=${token}`
 await transporter.verify()
 console.log("✅ SMTP connection successful")
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Vernay Hotel Password Reset',
-      html: `
-        <h2>Password Reset</h2>
+    await resend.emails.send({
+  from: 'onboarding@resend.dev',
+  to: email,
+  subject: 'Vernay Hotel Password Reset',
+  html: `
+    <h2>Password Reset</h2>
 
-        <p>You requested to reset your password.</p>
+    <p>You requested to reset your password.</p>
 
-        <p>
-          <a href="${resetLink}">
-            Click here to reset your password
-          </a>
-        </p>
+    <p>
+      <a href="${resetLink}">
+        Click here to reset your password
+      </a>
+    </p>
 
-        <p>This link expires in 1 hour.</p>
+    <p>This link expires in 1 hour.</p>
 
-        <p>If you didn't request this, ignore this email.</p>
-      `
-    })
+    <p>If you didn't request this, ignore this email.</p>
+  `
+})
 
-    res.json({
-      message: 'Password reset email sent.'
-    })
+res.json({
+  message: 'Password reset email sent.'
+})
 
   } catch (error) {
     console.error(error)
