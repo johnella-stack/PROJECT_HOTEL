@@ -3,7 +3,6 @@ import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import mysql from 'mysql2/promise'
-import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -16,16 +15,16 @@ dns.setDefaultResultOrder('ipv4first')
 dotenv.config()
 
 
+import nodemailer from 'nodemailer'
+console.log("BREVO_USER:", process.env.BREVO_USER)
+console.log("BREVO_PASS exists:", !!process.env.BREVO_PASS)
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
+  host: 'smtp-relay.brevo.com',
   port: 587,
-  secure: false, // use STARTTLS
+  secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
   },
 })
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
@@ -460,7 +459,7 @@ app.post('/api/forgot-password', async (req, res) => {
 
   const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
  await transporter.sendMail({
-  from: `"Vernay Hotel" <${process.env.EMAIL_USER}>`,
+  from: `"Vernay Hotel" <${process.env.BREVO_USER}>`,
   to: email,
   subject: 'Vernay Hotel Password Reset',
   html: `
@@ -490,6 +489,13 @@ res.json({
     res.status(500).json({
       message: 'Unable to send reset email.'
     })
+  }
+})
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('SMTP Error:', error)
+  } else {
+    console.log('✅ Brevo SMTP Ready!')
   }
 })
 app.post('/api/reset-password', async (req, res) => {
