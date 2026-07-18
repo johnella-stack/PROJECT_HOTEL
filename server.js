@@ -7,26 +7,22 @@ import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
-import dns from 'dns'
+import * as brevo from '@getbrevo/brevo'
 
-dns.setDefaultResultOrder('ipv4first')
+
 
 
 dotenv.config()
 
 
-import nodemailer from 'nodemailer'
-console.log("BREVO_USER:", process.env.BREVO_USER)
-console.log("BREVO_PASS exists:", !!process.env.BREVO_PASS)
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-})
+const apiInstance = new brevo.TransactionalEmailsApi()
+
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+)
+console.log("BREVO_API_KEY exists:", !!process.env.BREVO_API_KEY)
+
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
 console.log('MYSQLPORT:', process.env.MYSQLPORT)
 console.log('MYSQLUSER:', process.env.MYSQLUSER)
@@ -457,27 +453,40 @@ app.post('/api/forgot-password', async (req, res) => {
       [email.toLowerCase(), token, expires]
     )
 
-  const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
- await transporter.sendMail({
-  from: `"Vernay Hotel" <${process.env.BREVO_USER}>`,
-  to: email,
-  subject: 'Vernay Hotel Password Reset',
-  html: `
-    <h2>Password Reset</h2>
+const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
+ 
+const emailData = new brevo.SendSmtpEmail()
 
-    <p>You requested to reset your password.</p>
+emailData.sender = {
+  name: "Vernay Hotel",
+  email: "johnelladon3@gmail.com"
+}
 
-    <p>
-      <a href="${resetLink}">
-        Click here to reset your password
-      </a>
-    </p>
+emailData.to = [
+  {
+    email: email
+  }
+]
 
-    <p>This link expires in 1 hour.</p>
+emailData.subject = "Vernay Hotel Password Reset"
 
-    <p>If you didn't request this email, please ignore it.</p>
-  `,
-})
+emailData.htmlContent = `
+<h2>Password Reset</h2>
+
+<p>You requested to reset your password.</p>
+
+<p>
+<a href="${resetLink}">
+Click here to reset your password
+</a>
+</p>
+
+<p>This link expires in 1 hour.</p>
+
+<p>If you didn't request this email, please ignore it.</p>
+`
+
+await apiInstance.sendTransacEmail(emailData)
 
 res.json({
   message: 'Password reset email sent.'
@@ -491,13 +500,7 @@ res.json({
     })
   }
 })
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('SMTP Error:', error)
-  } else {
-    console.log('✅ Brevo SMTP Ready!')
-  }
-})
+
 app.post('/api/reset-password', async (req, res) => {
   const { token, password } = req.body
 
