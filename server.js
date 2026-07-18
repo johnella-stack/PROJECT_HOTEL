@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import mysql from 'mysql2/promise'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -13,7 +13,13 @@ import fs from 'fs'
 dotenv.config()
 
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+})
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
 console.log('MYSQLPORT:', process.env.MYSQLPORT)
 console.log('MYSQLUSER:', process.env.MYSQLUSER)
@@ -445,8 +451,8 @@ app.post('/api/forgot-password', async (req, res) => {
     )
 
   const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
-    await resend.emails.send({
-  from: 'onboarding@resend.dev',
+ await transporter.sendMail({
+  from: `"Vernay Hotel" <${process.env.EMAIL_USER}>`,
   to: email,
   subject: 'Vernay Hotel Password Reset',
   html: `
@@ -462,8 +468,8 @@ app.post('/api/forgot-password', async (req, res) => {
 
     <p>This link expires in 1 hour.</p>
 
-    <p>If you didn't request this, ignore this email.</p>
-  `
+    <p>If you didn't request this email, please ignore it.</p>
+  `,
 })
 
 res.json({
