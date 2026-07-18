@@ -451,7 +451,8 @@ app.post('/api/forgot-password', async (req, res) => {
       [email.toLowerCase(), token, expires]
     )
 
-const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
+const resetFrontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+    const resetLink = `${resetFrontendBaseUrl}/?resetToken=${token}`;
  
 await brevo.transactionalEmails.sendTransacEmail({
   sender: {
