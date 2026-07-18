@@ -8,6 +8,9 @@ import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import dns from 'dns'
+
+dns.setDefaultResultOrder('ipv4first')
 
 
 dotenv.config()
