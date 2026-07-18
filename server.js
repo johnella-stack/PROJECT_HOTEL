@@ -7,7 +7,7 @@ import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
-import * as brevo from '@getbrevo/brevo'
+import { BrevoClient } from '@getbrevo/brevo'
 
 
 
@@ -15,12 +15,10 @@ import * as brevo from '@getbrevo/brevo'
 dotenv.config()
 
 
-const apiInstance = new brevo.TransactionalEmailsApi()
+const brevo = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY,
+})
 
-apiInstance.setApiKey(
-  brevo.TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY
-)
 console.log("BREVO_API_KEY exists:", !!process.env.BREVO_API_KEY)
 
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
@@ -455,38 +453,31 @@ app.post('/api/forgot-password', async (req, res) => {
 
 const resetLink = `https://project-hotel-khaki.vercel.app/?resetToken=${token}`;
  
-const emailData = new brevo.SendSmtpEmail()
+await brevo.transactionalEmails.sendTransacEmail({
+  sender: {
+    name: 'Vernay Hotel',
+    email: 'johnelladon3@gmail.com',
+  },
+  to: [
+    {
+      email,
+    },
+  ],
+  subject: 'Vernay Hotel Password Reset',
+  htmlContent: `
+    <h2>Password Reset</h2>
 
-emailData.sender = {
-  name: "Vernay Hotel",
-  email: "johnelladon3@gmail.com"
-}
+    <p>You requested to reset your password.</p>
 
-emailData.to = [
-  {
-    email: email
-  }
-]
+    <p>
+      <a href="${resetLink}">
+        Click here to reset your password
+      </a>
+    </p>
 
-emailData.subject = "Vernay Hotel Password Reset"
-
-emailData.htmlContent = `
-<h2>Password Reset</h2>
-
-<p>You requested to reset your password.</p>
-
-<p>
-<a href="${resetLink}">
-Click here to reset your password
-</a>
-</p>
-
-<p>This link expires in 1 hour.</p>
-
-<p>If you didn't request this email, please ignore it.</p>
-`
-
-await apiInstance.sendTransacEmail(emailData)
+    <p>This link expires in 1 hour.</p>
+  `,
+})
 
 res.json({
   message: 'Password reset email sent.'
