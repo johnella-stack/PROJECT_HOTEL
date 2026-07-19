@@ -31,19 +31,28 @@ oauth2Client.setCredentials({
 async function createTransporter() {
   const accessToken = await oauth2Client.getAccessToken()
 
+  console.log("Access Token:", accessToken.token)
+
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    family: 4, // Force IPv4
+
     auth: {
-      type: 'OAuth2',
+      type: "OAuth2",
       user: process.env.GOOGLE_EMAIL,
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
       accessToken: accessToken.token,
     },
+
+    tls: {
+      rejectUnauthorized: false,
+    },
   })
 }
-
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
 console.log('MYSQLPORT:', process.env.MYSQLPORT)
 console.log('MYSQLUSER:', process.env.MYSQLUSER)
