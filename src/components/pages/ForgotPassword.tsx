@@ -15,10 +15,9 @@ export default function ForgotPassword({ navigate }: Props) {
   console.log("Button clicked!")
 
   try {
-    const API_URL = import.meta.env.VITE_API_URL
-    console.log("API_URL =", API_URL)
+    
 
-const response = await fetch(`${API_URL}/api/forgot-password`, {
+const response = await fetch('/api/forgot-password', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

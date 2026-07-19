@@ -21,7 +21,7 @@ export interface RoomRecord {
   bookedForDates?: boolean
 }
 
-const API_URL = 'https://project-hotel-xz49.onrender.com'
+
 
 const fallbackImage = (name: string, type: string) => {
   const normalizedName = name.toLowerCase()
@@ -130,7 +130,7 @@ export const loadRoomsFromServer = async (checkIn?: string, checkOut?: string): 
   if (checkOut) params.set('checkOut', checkOut)
 
   const query = params.toString()
-  const response = await fetch(`${API_URL}/api/rooms${query ? `?${query}` : ''}`)
+  const response = await fetch(`/api/rooms${query ? `?${query}` : ''}`)
   if (!response.ok) throw new Error('Failed to load rooms')
   const data = await response.json()
   return Array.isArray(data) ? data.map(normalizeRoomRecord) : []
@@ -142,14 +142,14 @@ export const checkRoomAvailability = async (
   checkOut: string
 ): Promise<boolean> => {
   const params = new URLSearchParams({ checkIn, checkOut })
-  const response = await fetch(`${API_URL}/api/rooms/${roomId}/availability?${params}`)
+  const response = await fetch(`/api/rooms/${roomId}/availability?${params}`)
   if (!response.ok) throw new Error('Failed to check availability')
   const data = await response.json()
   return Boolean(data.available)
 }
 
 export const createRoomInServer = async (room: RoomRecord): Promise<RoomRecord> => {
-  const response = await fetch(`${API_URL}/api/rooms`, {
+  const response = await fetch(`/api/rooms`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(room),
@@ -160,7 +160,7 @@ export const createRoomInServer = async (room: RoomRecord): Promise<RoomRecord> 
 }
 
 export const updateRoomInServer = async (id: string, updates: Partial<RoomRecord>): Promise<RoomRecord> => {
-  const response = await fetch(`${API_URL}/api/rooms/${id}`, {
+  const response = await fetch(`/api/rooms/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),

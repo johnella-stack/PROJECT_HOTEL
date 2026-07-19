@@ -3,9 +3,9 @@ import type { Booking } from '../App'
 export const BOOKING_STORAGE_KEY = 'vernay-bookings'
 export const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000
 
-const API_URL = 'https://project-hotel-xz49.onrender.com'
+
 export const loadBookingsFromServer = async (): Promise<Booking[]> => {
-  const response = await fetch(`${API_URL}/api/bookings`)
+  const response = await fetch(`/api/bookings`)
 
   if (!response.ok) {
     throw new Error('Failed to load bookings from server')
@@ -102,10 +102,10 @@ export const persistBookings = (bookings: Booking[]) => {
 
 export const addBooking = async (booking: Booking) => {
   console.log('===== CREATE BOOKING =====')
-  console.log('API URL:', `${API_URL}/api/bookings`)
+  console.log('API URL:', `/api/bookings`)
   console.log('BOOKING SENT:', booking)
 
-  const response = await fetch(`${API_URL}/api/bookings`, {
+  const response = await fetch(`/api/bookings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ export const addBooking = async (booking: Booking) => {
 
 
 export const updateBookingStatus = async (id: string, status: Booking['status']) => {
-  const response = await fetch(`${API_URL}/api/bookings/${id}/status`, {
+  const response = await fetch(`/api/bookings/${id}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
