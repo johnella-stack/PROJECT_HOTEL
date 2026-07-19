@@ -1,4 +1,4 @@
-const API_URL = 'https://project-hotel-xz49.onrender.com'
+export const API_URL = 'https://project-hotel-xz49.onrender.com'
 
 const toISODateInput = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0')

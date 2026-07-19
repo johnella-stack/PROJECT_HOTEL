@@ -18,14 +18,16 @@ export default function ForgotPassword({ navigate }: Props) {
   try {
     
 
-const response = await fetch('/api/forgot-password', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ email }),
-})
-
+const response = await fetch(
+  'https://project-hotel-xz49.onrender.com/api/forgot-password',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  }
+)
     console.log("Status:", response.status)
 
     const data = await response.json()
