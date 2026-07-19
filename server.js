@@ -7,7 +7,8 @@ import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
-import { BrevoClient } from '@getbrevo/brevo'
+import nodemailer from 'nodemailer'
+import { google } from 'googleapis'
 
 
 
@@ -15,11 +16,33 @@ import { BrevoClient } from '@getbrevo/brevo'
 dotenv.config()
 
 
-const brevo = new BrevoClient({
-  apiKey: process.env.BREVO_API_KEY,
+const OAuth2 = google.auth.OAuth2
+
+const oauth2Client = new OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  'https://developers.google.com/oauthplayground'
+)
+
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
 })
 
-console.log("BREVO_API_KEY exists:", !!process.env.BREVO_API_KEY)
+async function createTransporter() {
+  const accessToken = await oauth2Client.getAccessToken()
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user: process.env.GOOGLE_EMAIL,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+      accessToken: accessToken.token,
+    },
+  })
+}
 
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
 console.log('MYSQLPORT:', process.env.MYSQLPORT)
@@ -422,6 +445,8 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body
 
+
+
   if (!email) {
     return res.status(400).json({
       message: 'Email is required'
@@ -453,19 +478,16 @@ app.post('/api/forgot-password', async (req, res) => {
 
 const resetFrontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
     const resetLink = `${resetFrontendBaseUrl}/?resetToken=${token}`;
- 
-await brevo.transactionalEmails.sendTransacEmail({
-  sender: {
-    name: 'Vernay Hotel',
-    email: 'johnelladon3@gmail.com',
-  },
-  to: [
-    {
-      email,
-    },
-  ],
+    
+
+    const transporter = await createTransporter()
+
+
+const info = await transporter.sendMail({
+  from: `"Vernay Hotel" <${process.env.GOOGLE_EMAIL}>`,
+  to: email,
   subject: 'Vernay Hotel Password Reset',
-  htmlContent: `
+  html: `
     <h2>Password Reset</h2>
 
     <p>You requested to reset your password.</p>
@@ -480,18 +502,23 @@ await brevo.transactionalEmails.sendTransacEmail({
   `,
 })
 
+console.log("Email sent:", info)
+
 res.json({
   message: 'Password reset email sent.'
 })
 
-  } catch (error) {
-    console.error(error)
+ } catch (error) {
+  console.error("FULL EMAIL ERROR")
+  console.error(error)
+  console.error(error.response)
+  console.error(error.response?.data)
 
-    res.status(500).json({
-      message: 'Unable to send reset email.'
-    })
-  }
-})
+  res.status(500).json({
+    message: "Unable to send reset email."
+  })
+ }
+ }); 
 
 app.post('/api/reset-password', async (req, res) => {
   const { token, password } = req.body

@@ -15,14 +15,15 @@ export default function ForgotPassword({ navigate }: Props) {
   console.log("Button clicked!")
 
   try {
-    const response = await fetch('https://project-hotel-xz49.onrender.com/api/forgot-password', {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      }
-    )
+    const API_URL = import.meta.env.VITE_API_URL
+
+const response = await fetch(`${API_URL}/api/forgot-password`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ email }),
+})
 
     console.log("Status:", response.status)
 
