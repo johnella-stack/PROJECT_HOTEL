@@ -9,6 +9,10 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import nodemailer from 'nodemailer'
 import { google } from 'googleapis'
+import { Resend } from 'resend'
+
+dotenv.config()
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 
 
@@ -35,9 +39,8 @@ async function createTransporter() {
 
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    family: 4, // Force IPv4
+    port: 465,
+    secure: true,
 
     auth: {
       type: "OAuth2",
@@ -48,9 +51,9 @@ async function createTransporter() {
       accessToken: accessToken.token,
     },
 
-    tls: {
-      rejectUnauthorized: false,
-    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
   })
 }
 console.log('MYSQLHOST:', process.env.MYSQLHOST)
@@ -489,11 +492,11 @@ const resetFrontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:
     const resetLink = `${resetFrontendBaseUrl}/?resetToken=${token}`;
     
 
-    const transporter = await createTransporter()
+   
 
 
-const info = await transporter.sendMail({
-  from: `"Vernay Hotel" <${process.env.GOOGLE_EMAIL}>`,
+const { data, error } = await resend.emails.send({
+  from: 'Vernay Hotel <onboarding@resend.dev>',
   to: email,
   subject: 'Vernay Hotel Password Reset',
   html: `
@@ -508,10 +511,17 @@ const info = await transporter.sendMail({
     </p>
 
     <p>This link expires in 1 hour.</p>
-  `,
+  `
 })
 
-console.log("Email sent:", info)
+if (error) {
+  console.error(error)
+  return res.status(500).json({
+    message: 'Unable to send reset email.'
+  })
+}
+
+console.log('Email sent:', data)
 
 res.json({
   message: 'Password reset email sent.'
