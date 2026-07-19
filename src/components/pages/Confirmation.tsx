@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircle, Download, Calendar, Users, CreditCard, XCircle } from 'lucide-react'
 import type { Page, Booking } from '../../App'
 import { isCancellationAllowed, updateBookingStatus } from '../../lib/bookingStore'
+import { formatPeso } from '../../lib/currency'
 
 interface Props {
   navigate: (p: Page) => void
@@ -123,16 +124,16 @@ export default function Confirmation({ navigate, booking }: Props) {
 
         <div className="px-6 py-4 border-t text-sm border-border">
           <div className="flex justify-between mb-1 text-muted-foreground">
-            <span>€{currentBooking.room.price} × {nights} night{nights !== 1 ? 's' : ''}</span>
-            <span>€{currentBooking.room.price * nights}</span>
+            <span>{formatPeso(currentBooking.room.price)} × {nights} night{nights !== 1 ? 's' : ''}</span>
+            <span>{formatPeso(currentBooking.room.price * nights)}</span>
           </div>
           <div className="flex justify-between mb-3 text-muted-foreground">
             <span>Taxes & fees</span>
-            <span>€{Math.round(currentBooking.room.price * nights * 0.1)}</span>
+            <span>{formatPeso(Math.round(currentBooking.room.price * nights * 0.1))}</span>
           </div>
           <div className="flex justify-between font-semibold pt-3 border-t border-border">
             <span>Total charged</span>
-            <span className="text-accent">€{currentBooking.totalPrice}</span>
+            <span className="text-accent">{formatPeso(currentBooking.totalPrice)}</span>
           </div>
         </div>
       </div>

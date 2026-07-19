@@ -233,7 +233,7 @@ export default function Home({ navigate, searchParams, setSearchParams }: Props)
               Executive Suite · Paris Flagship
             </p>
             <p className="text-xs" style={{ color: 'rgba(246,241,233,0.5)' }}>
-              From €420 / night
+              From PHP 20,000 / night
             </p>
           </div>
         </div>
@@ -417,7 +417,7 @@ export default function Home({ navigate, searchParams, setSearchParams }: Props)
                       className="font-display text-xl font-semibold"
                       style={{ color: 'var(--accent)' }}
                     >
-                      €{room.price}
+                      PHP {room.price}
                     </p>
                     <p
                       className="text-xs"
