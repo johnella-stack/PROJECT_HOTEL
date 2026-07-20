@@ -1,7 +1,5 @@
 import type { Booking } from '../App'
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:3001'
+import { API_URL } from '../config'
 
 export const BOOKING_STORAGE_KEY = 'vernay-bookings'
 export const CANCELLATION_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -161,17 +159,32 @@ export const addBooking = async (booking: Booking) => {
 
 
 
-export const updateBookingStatus = async (id: string, status: Booking['status']) => {
-  const response = await fetch(`/api/bookings/${id}/status`, {
+export const updateBookingStatus = async (
+  id: string,
+  status: Booking['status']
+) => {
+  const response = await fetch(`${API_URL}/api/bookings/${id}/status`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ status }),
   })
 
-  if (!response.ok) throw new Error('Failed to update booking status')
+  if (!response.ok) {
+    throw new Error('Failed to update booking status')
+  }
+
   const bookings = loadBookings()
-  const nextBookings = bookings.map((booking) => (booking.id === id ? { ...booking, status } : booking))
+
+  const nextBookings = bookings.map((booking) =>
+    booking.id === id
+      ? { ...booking, status }
+      : booking
+  )
+
   persistBookings(nextBookings)
+
   return nextBookings
 }
 
