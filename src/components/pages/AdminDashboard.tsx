@@ -797,7 +797,6 @@ setReservations(serverBookings)
       <option value="confirmed">Confirm</option>
       <option value="pending">Pending</option>
       <option value="cancelled">Cancel</option>
-      <option value="completed">Completed</option>
     </select>
   </div>
 </td>
@@ -971,34 +970,39 @@ setReservations(serverBookings)
           </div>
 
           {/* ACTION */}
-          <div className="pt-4">
-            <label
-              className="block text-[10px] tracking-[0.2em] uppercase mb-2"
-              style={{ color: 'var(--muted-foreground)' }}
-            >
-              Update Reservation Status
-            </label>
+          <div className="pt-4 space-y-3">
+  <button
+    onClick={() => setSelectedReservation(r)}
+    className="w-full px-4 py-3 border text-sm font-medium transition-opacity hover:opacity-80"
+    style={{
+      borderColor: 'var(--border)',
+      backgroundColor: 'var(--card)',
+    }}
+  >
+    View Reservation
+  </button>
 
-            <select
-              value={r.status}
-              onChange={(e) =>
-                updateStatus(
-                  r.id,
-                  e.target.value as Booking['status']
-                )
-              }
-              className="w-full px-3 py-3 text-sm border"
-              style={{
-                borderColor: 'var(--border)',
-                backgroundColor: 'var(--card)',
-                outline: 'none',
-              }}
-            >
-              <option value="confirmed">Confirm Reservation</option>
-              <option value="pending">Mark as Pending</option>
-              <option value="cancelled">Cancel Reservation</option>
-            </select>
-          </div>
+  <select
+    value={r.status}
+    onChange={(e) =>
+      updateStatus(
+        r.id,
+        e.target.value as Booking['status']
+      )
+    }
+    className="w-full px-3 py-3 text-sm border"
+    style={{
+      borderColor: 'var(--border)',
+      backgroundColor: 'var(--card)',
+      outline: 'none',
+    }}
+  >
+    <option value="confirmed">Confirm Reservation</option>
+    <option value="pending">Mark as Pending</option>
+    <option value="cancelled">Cancel Reservation</option>
+    <option value="completed">Completed</option>
+  </select>
+</div>
         </div>
       )
     })
@@ -1685,7 +1689,7 @@ setReservations(serverBookings)
     onClick={() => setSelectedReservation(null)}
   >
     <div
-      className="bg-white rounded-lg p-6 w-[520px] max-w-[95%]"
+      className="bg-white rounded-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto p-5 sm:p-6"
       onClick={(e) => e.stopPropagation()}
     >
       <h2 className="text-2xl font-semibold mb-4">
@@ -1711,10 +1715,10 @@ setReservations(serverBookings)
         <p><strong>Status:</strong> {selectedReservation.status}</p>
       </div>
 
-      <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end">
         <button
           onClick={() => setSelectedReservation(null)}
-          className="px-4 py-2 rounded bg-[#0B1736] text-white"
+          className="w-full sm:w-auto px-5 py-3 rounded bg-[#0B1736] text-white"
         >
           Close
         </button>
