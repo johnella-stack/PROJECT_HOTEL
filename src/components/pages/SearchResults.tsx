@@ -134,6 +134,8 @@ const minimumCheckOut = getMinimumCheckOut(
 )
         const nextRooms = serverRooms.map(toPublicRoom)
         console.log("SERVER ROOMS", nextRooms)
+console.log("FIRST ROOM ID:", nextRooms[0]?.id)
+        console.log("SERVER ROOMS", nextRooms)
         setRooms(nextRooms)
         persistStoredRooms(serverRooms)
         await syncBlockedDates(nextRooms)
@@ -208,17 +210,19 @@ const minimumCheckOut = getMinimumCheckOut(
     return Math.max(1, diff)
   }, [localParams.checkIn, localParams.checkOut])
 
-  const handleBook = (room: Room) => {
-    if (!user) {
-      setSelectedRoom(room)
-      setPendingRoom(room)
-      navigate('auth')
-      return
-    }
+const handleBook = (room: Room) => {
+  console.log("SELECTED ROOM", room)
 
+  if (!user) {
     setSelectedRoom(room)
-    navigate('room')
+    setPendingRoom(room)
+    navigate('auth')
+    return
   }
+
+  setSelectedRoom(room)
+  navigate('room')
+}
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">

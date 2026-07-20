@@ -61,7 +61,7 @@ export interface Booking {
   guestName: string
   guestEmail: string
   paymentMethod: string
-  status: 'confirmed' | 'pending' | 'cancelled'
+ status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
   createdAt: string
 }
 

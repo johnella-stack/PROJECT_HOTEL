@@ -771,6 +771,7 @@ app.put('/api/bookings/:id/status', async (req, res) => {
       'pending',
       'confirmed',
       'cancelled',
+       'completed',
     ]
 
     if (!allowedStatuses.includes(status)) {
@@ -830,54 +831,55 @@ app.put('/api/bookings/:id/status', async (req, res) => {
       [status, bookingId]
     )
 
-        if (roomId) {
-      if (status === 'confirmed') {
-        const formatMySQLDate = (value) => {
-          const date = new Date(value)
+       if (roomId) {
+  if (status === 'confirmed') {
+    const formatMySQLDate = (value) => {
+      const date = new Date(value)
 
-          if (Number.isNaN(date.getTime())) {
-            throw new Error('Invalid booking date')
-          }
-
-          return date.toISOString().slice(0, 10)
-        }
-
-        const checkInDate = formatMySQLDate(booking.check_in)
-        const checkOutDate = formatMySQLDate(booking.check_out)
-        const today = getManilaDate()
-
-        console.log('Booking room status check:', {
-          roomId,
-          today,
-          checkInDate,
-          checkOutDate,
-        })
-
-        await connection.query(
-          `UPDATE rooms
-           SET status = CASE
-             WHEN DATE(?) >= DATE(?)
-              AND DATE(?) < DATE(?)
-             THEN 'occupied'
-             ELSE 'available'
-           END,
-            available = 1
-           WHERE id = ?
-             AND status != 'maintenance'`,
-          [
-            today,
-            checkInDate,
-            today,
-            checkOutDate,
-            today,
-            checkInDate,
-            today,
-            checkOutDate,
-            roomId,
-          ]
-        )
+      if (Number.isNaN(date.getTime())) {
+        throw new Error('Invalid booking date')
       }
+
+      return date.toISOString().slice(0, 10)
     }
+
+    const checkInDate = formatMySQLDate(booking.check_in)
+    const checkOutDate = formatMySQLDate(booking.check_out)
+    const today = getManilaDate()
+
+    await connection.query(
+      `UPDATE rooms
+       SET status = CASE
+         WHEN DATE(?) >= DATE(?)
+          AND DATE(?) < DATE(?)
+         THEN 'occupied'
+         ELSE 'available'
+       END,
+       available = 1
+       WHERE id = ?
+         AND status != 'maintenance'`,
+      [
+        today,
+        checkInDate,
+        today,
+        checkOutDate,
+        roomId,
+      ]
+    )
+  }
+
+  // NEW
+if (status === 'completed') {
+  await connection.query(
+    `UPDATE rooms
+     SET status = 'cleaning',
+         available = 0
+     WHERE id = ?
+       AND status != 'maintenance'`,
+    [roomId]
+  )
+}
+}
 
     await connection.commit()
 
@@ -933,6 +935,16 @@ const syncAutomaticRoomStatuses = async () => {
   const today = getManilaDate()
 
   try {
+    // Automatically complete reservations whose stay has ended
+await pool.query(
+  `
+  UPDATE bookings
+  SET status = 'completed'
+  WHERE status = 'confirmed'
+    AND DATE(?) >= DATE(check_out)
+  `,
+  [today]
+)
     // 1. ACTIVE CONFIRMED STAY -> OCCUPIED
     await pool.query(
       `
@@ -1027,7 +1039,7 @@ app.get('/api/rooms', async (req, res) => {
   const { checkIn, checkOut } = req.query
 
   try {
-   await syncAutomaticRoomStatuses()
+    await syncAutomaticRoomStatuses()
     const [rooms] = await pool.query('SELECT * FROM rooms ORDER BY name')
     let bookedRoomIds = new Set()
 
@@ -1036,14 +1048,13 @@ app.get('/api/rooms', async (req, res) => {
     }
 
     res.json(
-      rooms.map((room) => mapRoom(room, bookedRoomIds.has(room.id)))
+      rooms.map((room) => mapRoom(room, bookedRoomIds.has(String(room.id))))
     )
   } catch (error) {
     console.error('Rooms error:', error.message)
     res.status(500).json({ message: 'Unable to load rooms' })
   }
 })
-
 app.get('/api/rooms/:id/availability', async (req, res) => {
   const { checkIn, checkOut } = req.query
 

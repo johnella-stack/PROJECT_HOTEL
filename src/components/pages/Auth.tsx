@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import type { Page, User } from '../../App'
-
+import { loginUser, registerUser,} from "../../services/authService";
 
 interface Props {
   navigate: (p: Page) => void
@@ -23,15 +23,6 @@ const [agreedToTerms, setAgreedToTerms] = useState(false)
 const [showPassword, setShowPassword] = useState(false)
 const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-
-  const authenticateWithServer = async (payload: { email: string; password: string; name?: string; role?: 'guest' | 'admin' }) => {
-    const response = await fetch('https://project-hotel-xz49.onrender.com/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    return response
-  }
 
   const validate = () => {
   const e: Record<string, string> = {}
@@ -74,34 +65,19 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     if (mode === 'register') {
       setLoading(true)
       try {
-        const response = await fetch('https://project-hotel-xz49.onrender.com/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name.trim(),
-            email: normalizedEmail,
-            password: form.password,
-            role: normalizedEmail.includes('admin') ? 'admin' : 'guest',
-          }),
-        })
+       const firebaseUser = await registerUser(
+  form.name.trim(),
+  normalizedEmail,
+  form.password
+)
 
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}))
-          setErrors({ email: data.message || 'This account already exists. Please sign in instead.' })
-          setLoading(false)
-          return
-        }
+const authenticatedUser = firebaseUser as User;
 
-        const data = await response.json()
-        const authenticatedUser = {
-          name: data.name,
-          email: data.email,
-          role: data.role,
-        } as User
-        
-        setUser(authenticatedUser)
-        setLoading(false)
-        onAuthSuccess(authenticatedUser)
+setUser(authenticatedUser);
+setLoading(false);
+onAuthSuccess(authenticatedUser);
+
+
       } catch {
         setErrors({ email: 'Unable to register right now. Please try again.' })
         setLoading(false)
@@ -111,27 +87,26 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     setLoading(true)
     try {
-      const response = await authenticateWithServer({ email: normalizedEmail, password: form.password })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        setErrors({ password: data.message || 'Incorrect password. Please try again.' })
-        setLoading(false)
-        return
-      }
+      const authenticatedUser = await loginUser(
+  normalizedEmail,
+  form.password
+)
 
-      const data = await response.json()
-      const authenticatedUser = {
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      } as User
+setUser(authenticatedUser as User)
+setLoading(false)
+onAuthSuccess(authenticatedUser as User)
       setUser(authenticatedUser)
       setLoading(false)
       onAuthSuccess(authenticatedUser)
-    } catch {
-      setErrors({ email: 'Unable to sign in right now. Please try again.' })
-      setLoading(false)
-    }
+    } catch (error: any) {
+  console.error(error);
+
+  setErrors({
+    email: error.message,
+  });
+
+  setLoading(false);
+}
   }
 
   return (

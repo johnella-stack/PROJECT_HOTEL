@@ -15,6 +15,34 @@ interface Props {
   navigate: (p: Page) => void
 }
 
+const formatDate = (date: string) =>
+  new Date(date).toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+  const formatBookingDate = (date: string) => {
+  const [year, month, day] = date.split("T")[0].split("-")
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]
+
+  return `${months[Number(month) - 1]} ${Number(day)}, ${year}`
+}
+
+
 type TabId = 'overview' | 'reservations' | 'rooms' | 'guests'
 
 type RoomItem = RoomRecord
@@ -32,7 +60,14 @@ const STATUS_CONFIG = {
   confirmed: { icon: <CheckCircle size={13} />, color: '#16a34a', bg: 'rgba(22,163,74,0.08)', label: 'Confirmed' },
   pending: { icon: <Clock size={13} />, color: '#d97706', bg: 'rgba(217,119,6,0.08)', label: 'Pending' },
   cancelled: { icon: <XCircle size={13} />, color: '#dc2626', bg: 'rgba(220,38,38,0.08)', label: 'Cancelled' },
+  completed: {
+  icon: <CheckCircle size={13} />,
+  color: '#2563eb',
+  bg: 'rgba(37,99,235,0.08)',
+  label: 'Completed',
+},
 }
+
 
 const ROOM_STATUS_CONFIG = {
   available: {
@@ -63,6 +98,7 @@ export default function AdminDashboard({ navigate }: Props) {
   const [reservations, setReservations] = useState<Booking[]>(() => loadBookings())
   const [rooms, setRooms] = useState<RoomItem[]>(ROOMS)
   const [walkInForm, setWalkInForm] = useState({
+  
   guestName: '',
   guestEmail: '',
   roomId: '',
@@ -70,6 +106,8 @@ export default function AdminDashboard({ navigate }: Props) {
   checkOut: '',
   guests: 1,
 })
+const [selectedReservation, setSelectedReservation] =
+  useState<Booking | null>(null)
 const today = new Date().toISOString().split('T')[0]
 
 const getMinimumWalkInCheckOut = (checkIn: string) => {
@@ -229,7 +267,21 @@ const filteredRes = useMemo(() => {
     )
   })
 }, [reservations, searchQuery])
+useEffect(() => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
+  reservations.forEach((booking) => {
+    if (booking.status !== 'confirmed') return
+
+    const checkOut = new Date(booking.checkOut)
+    checkOut.setHours(0, 0, 0, 0)
+
+    if (checkOut <= today) {
+      updateStatus(booking.id, 'completed')
+    }
+  })
+}, [reservations])
 const updateStatus = async (
   id: string,
   status: Booking['status']
@@ -259,6 +311,7 @@ const updateStatus = async (
     )
   }
 }
+
 
   const updateRoomStatus = async (id: string, status: RoomItem['status']) => {
    
@@ -621,7 +674,7 @@ setReservations(serverBookings)
                         </td>
                         <td className="px-6 py-3.5 font-medium">{r.guestName}</td>
                         <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.room?.name ?? 'Unknown Room'}</td>
-                        <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{r.checkIn}</td>
+                        <td className="px-6 py-3.5" style={{ color: 'var(--muted-foreground)' }}>{formatBookingDate(r.checkIn)}</td>
                         <td className="px-6 py-3.5 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatPeso(r.totalPrice)}</td>
                         <td className="px-6 py-3.5">
                           <span
@@ -707,8 +760,8 @@ setReservations(serverBookings)
                           <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{r.guestEmail}</p>
                         </td>
                         <td className="px-5 py-3" style={{ color: 'var(--muted-foreground)' }}>{r.room?.name ?? 'Unknown Room'}</td>
-                        <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{r.checkIn}</td>
-                        <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{r.checkOut}</td>
+                        <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatBookingDate(r.checkIn)}</td>
+                        <td className="px-5 py-3 font-mono text-xs" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatBookingDate(r.checkOut)}</td>
                         <td className="px-5 py-3 font-mono" style={{ fontFamily: 'var(--font-dm-mono)' }}>{formatPeso(r.totalPrice)}</td>
                         <td className="px-5 py-3">
                           <span
@@ -719,17 +772,35 @@ setReservations(serverBookings)
                           </span>
                         </td>
                         <td className="px-5 py-3">
-                          <select
-                            value={r.status}
-                            onChange={(e) => updateStatus(r.id, e.target.value as Booking['status'])}
-                            className="text-xs border px-2 py-1"
-                            style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-                          >
-                            <option value="confirmed">Confirm</option>
-                            <option value="pending">Pending</option>
-                            <option value="cancelled">Cancel</option>
-                          </select>
-                        </td>
+  <div className="flex gap-2">
+    <button
+  onClick={() => setSelectedReservation(r)}
+  className="px-3 py-1 border text-sm"
+>
+  View
+</button>
+
+    <select
+      value={r.status}
+      onChange={(e) =>
+        updateStatus(
+          r.id,
+          e.target.value as Booking['status']
+        )
+      }
+      className="text-xs border px-2 py-1"
+      style={{
+        borderColor: 'var(--border)',
+        backgroundColor: 'transparent',
+      }}
+    >
+      <option value="confirmed">Confirm</option>
+      <option value="pending">Pending</option>
+      <option value="cancelled">Cancel</option>
+      <option value="completed">Completed</option>
+    </select>
+  </div>
+</td>
                       </tr>
                     )
                   })}
@@ -863,7 +934,7 @@ setReservations(serverBookings)
                 className="text-xs"
                 style={{ fontFamily: 'var(--font-dm-mono)' }}
               >
-                {r.checkOut}
+               {formatBookingDate(r.checkOut)}
               </p>
             </div>
 
@@ -1176,6 +1247,7 @@ setReservations(serverBookings)
               )
             })}
           </div>
+
         </div>
       )}
 
@@ -1596,7 +1668,7 @@ setReservations(serverBookings)
                       className="px-6 py-4 font-mono text-xs"
                       style={{ fontFamily: 'var(--font-dm-mono)', color: 'var(--muted-foreground)' }}
                     >
-                      {r.checkIn}
+                      {formatBookingDate(r.checkIn)}
                     </td>
                   </tr>
                 )
@@ -1606,6 +1678,51 @@ setReservations(serverBookings)
           </div>
         </div>
       )}
+
+{selectedReservation && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    onClick={() => setSelectedReservation(null)}
+  >
+    <div
+      className="bg-white rounded-lg p-6 w-[520px] max-w-[95%]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 className="text-2xl font-semibold mb-4">
+        Reservation Details
+      </h2>
+
+      <div className="space-y-2">
+        <p><strong>Reservation ID:</strong> {selectedReservation.id}</p>
+        <p><strong>Guest:</strong> {selectedReservation.guestName}</p>
+        <p><strong>Email:</strong> {selectedReservation.guestEmail}</p>
+        <p><strong>Room:</strong> {selectedReservation.room.name}</p>
+        <p>
+          <strong>Check-In:</strong>{" "}
+          {formatBookingDate(selectedReservation.checkIn)}
+       </p>
+        <p>
+          <strong>Check-Out:</strong>{" "}
+          {formatBookingDate(selectedReservation.checkOut)}
+        </p>
+        <p><strong>Guests:</strong> {selectedReservation.guests}</p>
+        <p><strong>Payment:</strong> {selectedReservation.paymentMethod}</p>
+        <p><strong>Total:</strong> {formatPeso(selectedReservation.totalPrice)}</p>
+        <p><strong>Status:</strong> {selectedReservation.status}</p>
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={() => setSelectedReservation(null)}
+          className="px-4 py-2 rounded bg-[#0B1736] text-white"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   )
 }
