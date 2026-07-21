@@ -9,7 +9,14 @@ import {addBooking,
   loadBookingsFromServer,
   updateBookingStatus,
 } from '../../lib/bookingStore'
-import { createRoomInServer, loadRoomsFromServer, persistStoredRooms, updateRoomInServer, type RoomRecord } from '../../lib/roomStore'
+import {
+  createRoomInServer,
+  deleteRoomFromServer,
+  loadRoomsFromServer,
+  persistStoredRooms,
+  updateRoomInServer,
+  type RoomRecord,
+} from '../../lib/roomStore'
 import { formatPeso } from '../../lib/currency'
 interface Props {
   navigate: (p: Page) => void
@@ -97,6 +104,17 @@ export default function AdminDashboard({ navigate }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [reservations, setReservations] = useState<Booking[]>(() => loadBookings())
   const [rooms, setRooms] = useState<RoomItem[]>(ROOMS)
+  const [newRoom, setNewRoom] = useState({
+  id: '',
+  name: '',
+  type: 'Standard',
+  price: 2500,
+  capacity: 2,
+  size: 25,
+  floor: 1,
+  image: '',
+  status: 'available' as RoomItem['status'],
+})
   const [walkInForm, setWalkInForm] = useState({
   
   guestName: '',
@@ -108,6 +126,8 @@ export default function AdminDashboard({ navigate }: Props) {
 })
 const [selectedReservation, setSelectedReservation] =
   useState<Booking | null>(null)
+const [editingRoom, setEditingRoom] =
+  useState<RoomItem | null>(null)
 const today = new Date().toISOString().split('T')[0]
 
 const getMinimumWalkInCheckOut = (checkIn: string) => {
@@ -325,44 +345,72 @@ const updateStatus = async (
   }
 
   const addRoom = async () => {
-  const nextId = `ROOM-${Date.now()}`
+  if (!newRoom.id.trim()) {
+    alert('Please enter a Room ID.')
+    return
+  }
 
-  const newRoom: RoomItem = {
-    id: nextId,
-    name: `New Room`,
-    type: 'Standard',
-    price: 2500,
-    status: 'available',
-    floor: 1,
+  if (!newRoom.name.trim()) {
+    alert('Please enter a Room Name.')
+    return
+  }
+
+  if (newRoom.price <= 0) {
+    alert('Please enter a valid room price.')
+    return
+  }
+
+  const roomToSave: RoomItem = {
+    id: newRoom.id,
+    name: newRoom.name,
+    type: newRoom.type,
+    price: newRoom.price,
+    status: newRoom.status,
+    floor: newRoom.floor,
     lastCleaned: new Date().toISOString(),
     image:
+      newRoom.image ||
       'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&h=480&fit=crop&auto=format',
-    size: 28,
-    capacity: 2,
-    available: true,
+    size: newRoom.size,
+    capacity: newRoom.capacity,
+    available: newRoom.status === 'available',
   }
 
   try {
-    const savedRoom = await createRoomInServer(newRoom)
+    const savedRoom = await createRoomInServer(roomToSave)
 
-    setRooms((current) => [savedRoom, ...current])
+    const nextRooms = [savedRoom, ...rooms]
 
-    persistStoredRooms([savedRoom, ...rooms])
+    setRooms(nextRooms)
+
+    persistStoredRooms(nextRooms)
 
     window.dispatchEvent(
       new CustomEvent('vernay-rooms-updated', {
-        detail: [savedRoom, ...rooms],
+        detail: nextRooms,
       })
     )
 
-    alert('Room added and saved to database successfully!')
+    setNewRoom({
+      id: '',
+      name: '',
+      type: 'Standard',
+      price: 2500,
+      capacity: 2,
+      size: 25,
+      floor: 1,
+      image: '',
+      status: 'available',
+    })
+
+    alert('Room added successfully!')
   } catch (error) {
-    console.error('CREATE ROOM ERROR:', error)
+    console.error(error)
 
     alert(
       error instanceof Error
         ? error.message
-        : 'Failed to create room'
+        : 'Failed to create room.'
     )
   }
 }
@@ -387,7 +435,41 @@ const markRoomAsCleaned = async (roomId: string) => {
     alert('Unable to mark room as cleaned.')
   }
 }
+const deleteRoom = async (id: string) => {
+  const confirmed = window.confirm(
+    'Are you sure you want to delete this room?'
+  )
 
+  if (!confirmed) return
+
+  try {
+    await deleteRoomFromServer(id)
+
+    const nextRooms = rooms.filter(
+      (room) => room.id !== id
+    )
+
+    setRooms(nextRooms)
+
+    persistStoredRooms(nextRooms)
+
+    window.dispatchEvent(
+      new CustomEvent('vernay-rooms-updated', {
+        detail: nextRooms,
+      })
+    )
+
+    alert('Room deleted successfully!')
+  } catch (error) {
+    console.error(error)
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Failed to delete room.'
+    )
+  }
+}
   const updateRoomField = async (
   id: string,
   field: 'name' | 'type' | 'price' | 'image' | 'floor' | 'size' | 'capacity',
@@ -1017,71 +1099,443 @@ setReservations(serverBookings)
       {activeTab === 'rooms' && (
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full mb-6">
               {Object.entries(ROOM_STATUS_CONFIG).map(([key, val]) => {
                 const count = rooms.filter((r) => r.status === key).length
                 return (
-                  <span
-                    key={key}
-                    className="text-xs px-3 py-1.5 flex items-center gap-1.5"
-                    style={{ backgroundColor: val.bg, color: val.color }}
-                  >
-                    {count} {val.label}
-                  </span>
+                 <div
+    key={key}
+    className="rounded-xl p-4 border"
+    style={{
+        borderColor: val.color,
+        background: val.bg,
+    }}
+>
+    <p
+        className="text-xs uppercase tracking-wider"
+        style={{
+            color: val.color,
+        }}
+    >
+        {val.label}
+    </p>
+
+    <h2
+        className="text-3xl font-bold mt-2"
+        style={{
+            color: val.color,
+        }}
+    >
+        {count}
+    </h2>
+</div>
                 )
               })}
             </div>
-            <button
-                onClick={addRoom}
-                className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2.5 text-sm tracking-wide"
-              style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
-            >
-              <Plus size={14} /> Add Room
-            </button>
+            <div
+  className="border rounded-2xl p-8 shadow-sm bg-white w-full"
+  style={{
+    borderColor: 'var(--border)',
+    backgroundColor: 'var(--card)',
+  }}
+>
+  <h3 className="text-3xl font-bold">
+  Add New Room
+</h3>
+
+<p
+  className="text-sm mb-8 mt-2"
+  style={{
+    color: "var(--muted-foreground)",
+  }}
+>
+  Fill in the room details below to add a new room.
+</p>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    🛏 Room ID
+  </label>
+
+  <input
+    placeholder="101"
+    value={newRoom.id}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        id: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{
+      borderColor: "var(--border)",
+    }}
+  />
+</div>
+
+   <div>
+  <label className="block text-sm font-medium mb-2">
+    📝 Room Name
+  </label>
+
+  <input
+    placeholder="Classic Double Room"
+    value={newRoom.name}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        name: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{
+      borderColor: "var(--border)",
+    }}
+  />
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    🏨 Room Type
+  </label>
+
+  <select
+    value={newRoom.type}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        type: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  >
+    <option>Standard</option>
+    <option>Deluxe</option>
+    <option>Executive</option>
+    <option>Suite</option>
+    <option>Family</option>
+  </select>
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    💰 Price per Night
+  </label>
+
+  <input
+    type="number"
+    placeholder="2500"
+    value={newRoom.price}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        price: Number(e.target.value),
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  />
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    👥 Maximum Guests
+  </label>
+
+  <input
+    type="number"
+    placeholder="2"
+    value={newRoom.capacity}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        capacity: Number(e.target.value),
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  />
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    📐 Room Size (m²)
+  </label>
+
+  <input
+    type="number"
+    placeholder="25"
+    value={newRoom.size}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        size: Number(e.target.value),
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  />
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    🏢 Floor
+  </label>
+
+  <input
+    type="number"
+    placeholder="1"
+    value={newRoom.floor}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        floor: Number(e.target.value),
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  />
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    🖼 Room Image URL
+  </label>
+
+  <input
+    placeholder="https://..."
+    value={newRoom.image}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        image: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  />
+</div>
+
+    <div>
+  <label className="block text-sm font-medium mb-2">
+    📍 Room Status
+  </label>
+
+  <select
+    value={newRoom.status}
+    onChange={(e) =>
+      setNewRoom({
+        ...newRoom,
+        status: e.target.value as RoomItem["status"],
+      })
+    }
+    className="w-full border rounded-lg px-3 py-3"
+    style={{ borderColor: "var(--border)" }}
+  >
+    <option value="available">Available</option>
+    <option value="occupied">Occupied</option>
+    <option value="cleaning">Cleaning</option>
+    <option value="maintenance">Maintenance</option>
+  </select>
+</div>
+
+  </div>
+
+  <button
+    onClick={addRoom}
+    className="mt-8 w-full flex justify-center items-center gap-2 rounded-xl px-5 py-4 text-base font-semibold"
+    style={{
+      backgroundColor: 'var(--primary)',
+      color: 'var(--primary-foreground)',
+    }}
+  >
+    <Plus size={14} />
+    Save Room
+  </button>
+</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
             {rooms.map((room) => {
               const s = ROOM_STATUS_CONFIG[room.status]
               return (
                 <div
-                  key={room.id}
-                  className="border p-3 sm:p-5 min-w-0 overflow-hidden"
-                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p
-                        className="font-mono text-xs mb-1"
-                        style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-dm-mono)' }}
-                      >
-                        Room {room.id} · Floor {room.floor}
-                      </p>
-                      <h3 className="font-semibold text-sm">{room.name}</h3>
-                    </div>
-                    <span
-                      className="text-xs px-2 py-1"
-                      style={{ backgroundColor: s.bg, color: s.color }}
-                    >
-                      {s.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    <span>{room.type}</span>
-                    <span
-                      className="font-display text-base font-semibold"
-                      style={{ color: 'var(--accent)' }}
-                    >
-                     {formatPeso(room.price)}<span className="text-xs font-normal">/night</span>
-                    </span>
-                  </div>
-                  <div
-                    className="mt-3 pt-3 border-t text-xs"
-                    style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
-                  >
-                    Last cleaned: {room.lastCleaned}
-                  </div>
+  key={room.id}
+  className="border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 bg-white"
+  style={{
+    borderColor: 'var(--border)',
+  }}
+>
+                  <img
+  src={
+    room.image ||
+    "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700"
+  }
+  alt={room.name}
+  className="w-full h-56 object-cover"
+/>
+<div className="p-5">
+                 <div className="flex items-start justify-between mb-4">
+
+  <div>
+    <p
+      className="text-xs uppercase break-all tracking-[0.25em]"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Room {room.id}
+    </p>
+
+    <h3 className="text-xl font-bold mt-1">
+      {room.name}
+    </h3>
+
+    <div className="mt-2 flex gap-2 flex-wrap">
+
+      <span
+        className="px-3 py-1 rounded-full text-xs font-semibold"
+        style={{
+          background:
+            room.type === 'Suite'
+              ? '#EFE4FF'
+              : room.type === 'Executive'
+              ? '#DDF8E8'
+              : room.type === 'Deluxe'
+              ? '#FFF2D6'
+              : '#ECECEC',
+          color:
+            room.type === 'Suite'
+              ? '#7C3AED'
+              : room.type === 'Executive'
+              ? '#15803D'
+              : room.type === 'Deluxe'
+              ? '#B45309'
+              : '#444',
+        }}
+      >
+        {room.type}
+      </span>
+
+      <span
+        className="px-3 py-1 rounded-full text-xs"
+        style={{
+          background: s.bg,
+          color: s.color,
+        }}
+      >
+        {s.label}
+      </span>
+
+    </div>
+
+  </div>
+
+</div>
+                  
+
+                  <div className="mt-5 flex items-end justify-between">
+
+  <div>
+    <p
+      className="text-xs uppercase tracking-wider"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Price per Night
+    </p>
+
+    <h2
+      className="text-4xl font-extrabold"
+      style={{ color: '#0B1736' }}
+    >
+      {formatPeso(room.price)}
+    </h2>
+  </div>
+
+</div>
+                 <div
+  className="mt-4 grid grid-cols-2 gap-4 text-sm border-t pt-4"
+  style={{
+    borderColor: 'var(--border)',
+  }}
+>
+  <div>
+    <p
+      className="text-xs"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Room Type
+    </p>
+    <span
+  className="px-3 py-1 rounded-full text-xs font-semibold"
+  style={{
+    backgroundColor:
+      room.type === 'Suite'
+        ? '#E8D9FF'
+        : room.type === 'Executive'
+        ? '#D8F5E4'
+        : room.type === 'Deluxe'
+        ? '#FFF3D6'
+        : '#E5E7EB',
+
+    color:
+      room.type === 'Suite'
+        ? '#7C3AED'
+        : room.type === 'Executive'
+        ? '#15803D'
+        : room.type === 'Deluxe'
+        ? '#B45309'
+        : '#374151',
+  }}
+>
+  {room.type}
+</span>
+  </div>
+
+  <div>
+    <p
+      className="text-xs"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Floor
+    </p>
+    <strong>{room.floor}</strong>
+  </div>
+
+  <div>
+    <p
+      className="text-xs"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Guests
+    </p>
+    <strong>{room.capacity}</strong>
+  </div>
+
+  <div>
+    <p
+      className="text-xs"
+      style={{ color: 'var(--muted-foreground)' }}
+    >
+      Room Size
+    </p>
+    <strong>{room.size} m²</strong>
+  </div>
+</div>
+
+<div
+  className="mt-4 pt-3 border-t text-xs"
+  style={{
+    borderColor: 'var(--border)',
+    color: 'var(--muted-foreground)',
+  }}
+>
+  Last cleaned:
+  <br />
+  {new Date(room.lastCleaned).toLocaleString()}
+</div>
                   <div className="mt-4 space-y-2 text-xs">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <label className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                         Manage status
                       </label>
@@ -1111,141 +1565,31 @@ setReservations(serverBookings)
                         </button>
                       )}
                     </div>
-                    <input
-                      value={room.name}
-                      onChange={(e) => updateRoomField(room.id, 'name', e.target.value)}
-                      className="w-full px-2 py-1.5 border text-xs"
-                      style={{ borderColor: 'var(--border)', backgroundColor: 'transparent', outline: 'none' }}
-                      placeholder="Room name"
-                    />
-                    
-                   <input
-                      type="number"
-                      value={room.price}
-                      onChange={(e) =>
-                        updateRoomField(
-                          room.id,
-                          'price',
-                          Number(e.target.value)
-                        )
-                      }
-                      className="w-full min-w-0 px-2 py-2 border text-xs"
-                      style={{
-                        borderColor: 'var(--border)',
-                        backgroundColor: 'transparent',
-                        outline: 'none',
-                      }}
-                      placeholder="Price"
-                    />
+                    <div className="mt-5 grid grid-cols-2 gap-3">
 
-                    {/* MAXIMUM GUESTS */}
-                    <div>
-                      <label
-                        className="block text-xs mb-1"
-                        style={{ color: 'var(--muted-foreground)' }}
-                      >
-                        Maximum Guests
-                      </label>
+  <button
+    onClick={() => setEditingRoom(room)}
+    className="py-3 rounded-lg font-medium transition hover:opacity-90"
+    style={{
+      background: '#0B1736',
+      color: '#fff',
+    }}
+  >
+    ✏ Edit
+  </button>
 
-                      <input
-                        type="number"
-                        min="1"
-                        value={room.capacity ?? 2}
-                        onChange={(e) =>
-                          updateRoomField(
-                            room.id,
-                            'capacity',
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-full px-2 py-1.5 border text-xs"
-                        style={{
-                          borderColor: 'var(--border)',
-                          backgroundColor: 'transparent',
-                          outline: 'none',
-                        }}
-                        placeholder="Maximum guests"
-                      />
-                    </div>
-
-                    {/* ROOM SIZE */}
-                    <div>
-                      <label
-                        className="block text-xs mb-1"
-                        style={{ color: 'var(--muted-foreground)' }}
-                      >
-                        Room Size (m²)
-                      </label>
-
-                      <input
-                        type="number"
-                        min="1"
-                        value={room.size ?? 28}
-                        onChange={(e) =>
-                          updateRoomField(
-                            room.id,
-                            'size',
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-full px-2 py-1.5 border text-xs"
-                        style={{
-                          borderColor: 'var(--border)',
-                          backgroundColor: 'transparent',
-                          outline: 'none',
-                        }}
-                        placeholder="Room size"
-                      />
-                    </div>
-
-                    {/* FLOOR */}
-                    <div>
-                      <label
-                        className="block text-xs mb-1"
-                        style={{ color: 'var(--muted-foreground)' }}
-                      >
-                        Floor
-                      </label>
-
-                      <input
-                        type="number"
-                        min="1"
-                        value={room.floor}
-                        onChange={(e) =>
-                          updateRoomField(
-                            room.id,
-                            'floor',
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-full px-2 py-1.5 border text-xs"
-                        style={{
-                          borderColor: 'var(--border)',
-                          backgroundColor: 'transparent',
-                          outline: 'none',
-                        }}
-                        placeholder="Floor"
-                      />
-                    </div>
-
-                    {/* IMAGE URL */}
-                    <input
-                      value={room.image ?? ''}
-                      onChange={(e) =>
-                        updateRoomField(
-                          room.id,
-                          'image',
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-2 py-1.5 border text-xs"
-                      style={{
-                        borderColor: 'var(--border)',
-                        backgroundColor: 'transparent',
-                        outline: 'none',
-                      }}
-                      placeholder="Image URL"
-                    />
+  <button
+    onClick={() => deleteRoom(room.id)}
+    className="py-3 rounded-lg font-medium transition hover:opacity-90"
+    style={{
+      background: '#dc2626',
+      color: '#fff',
+    }}
+  >
+    🗑 Delete
+  </button>
+  </div>
+</div>
                   </div>
                 </div>
               )
@@ -1726,7 +2070,149 @@ setReservations(serverBookings)
     </div>
   </div>
 )}
+{editingRoom && (
+  <div
+    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    onClick={() => setEditingRoom(null)}
+  >
+    <div
+      className="bg-white rounded-lg w-full max-w-lg p-6"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 className="text-2xl font-semibold mb-5">
+        Edit Room
+      </h2>
 
+      <div className="space-y-4">
+
+        <input
+          value={editingRoom.name}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              name: e.target.value,
+            })
+          }
+          className="w-full border p-2"
+          placeholder="Room Name"
+        />
+
+        <select
+          value={editingRoom.type}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              type: e.target.value,
+            })
+          }
+          className="w-full border p-2"
+        >
+          <option>Standard</option>
+          <option>Deluxe</option>
+          <option>Executive</option>
+          <option>Suite</option>
+        </select>
+
+        <input
+          type="number"
+          value={editingRoom.price}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              price: Number(e.target.value),
+            })
+          }
+          className="w-full border p-2"
+          placeholder="Price"
+        />
+
+        <input
+          type="number"
+          value={editingRoom.capacity}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              capacity: Number(e.target.value),
+            })
+          }
+          className="w-full border p-2"
+          placeholder="Maximum Guests"
+        />
+
+        <input
+          type="number"
+          value={editingRoom.size}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              size: Number(e.target.value),
+            })
+          }
+          className="w-full border p-2"
+          placeholder="Room Size"
+        />
+
+        <input
+          type="number"
+          value={editingRoom.floor}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              floor: Number(e.target.value),
+            })
+          }
+          className="w-full border p-2"
+          placeholder="Floor"
+        />
+
+        <input
+          value={editingRoom.image ?? ''}
+          onChange={(e) =>
+            setEditingRoom({
+              ...editingRoom,
+              image: e.target.value,
+            })
+          }
+          className="w-full border p-2"
+          placeholder="Image URL"
+        />
+
+      </div>
+
+      <div className="flex justify-end gap-3 mt-6">
+
+        <button
+          onClick={() => setEditingRoom(null)}
+          className="px-5 py-2 border rounded"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={async () => {
+            const updated = await updateRoomInServer(
+              editingRoom.id,
+              editingRoom
+            )
+
+            const nextRooms = rooms.map((room) =>
+              room.id === updated.id ? updated : room
+            )
+
+            setRooms(nextRooms)
+            persistStoredRooms(nextRooms)
+
+            setEditingRoom(null)
+          }}
+          className="px-5 py-2 bg-[#0B1736] text-white rounded"
+        >
+          Save Changes
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
     </div>
   )
 }

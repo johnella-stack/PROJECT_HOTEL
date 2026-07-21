@@ -217,3 +217,14 @@ export const toPublicRoom = (room: RoomRecord): Room => ({
   floor: room.floor,
   lastCleaned: room.lastCleaned,
 })
+export const deleteRoomFromServer = async (id: string) => {
+  const response = await fetch(`${API_URL}/api/rooms/${id}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to delete room')
+  }
+
+  return await response.json()
+}

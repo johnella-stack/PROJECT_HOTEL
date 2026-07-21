@@ -1055,6 +1055,38 @@ app.get('/api/rooms', async (req, res) => {
     res.status(500).json({ message: 'Unable to load rooms' })
   }
 })
+
+  app.delete('/api/rooms/:id', async (req, res) => {
+  console.log('DELETE endpoint hit')
+  console.log('Room ID:', req.params.id)
+
+  
+  try {
+    const { id } = req.params
+
+    const [result] = await pool.query(
+      'DELETE FROM rooms WHERE id = ?',
+      [id]
+    )
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: 'Room not found',
+      })
+    }
+
+    res.json({
+      success: true,
+      message: 'Room deleted successfully',
+    })
+  } catch (error) {
+    console.error('Delete room error:', error)
+
+    res.status(500).json({
+      error: 'Failed to delete room',
+    })
+  }
+})
 app.get('/api/rooms/:id/availability', async (req, res) => {
   const { checkIn, checkOut } = req.query
 
