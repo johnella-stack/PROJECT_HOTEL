@@ -3,6 +3,7 @@ import {
   LayoutDashboard, BedDouble, CalendarCheck, Users, TrendingUp,
   CheckCircle, Clock, XCircle, Plus, Search, ArrowUpRight
 } from 'lucide-react'
+import { uploadRoomImage } from "../../lib/cloudinary"
 import type { Booking, Page } from '../../App'
 import {addBooking,
   loadBookings,
@@ -101,6 +102,8 @@ const ROOM_STATUS_CONFIG = {
 
 export default function AdminDashboard({ navigate }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
+  const [roomImageFile, setRoomImageFile] =
+    useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [reservations, setReservations] = useState<Booking[]>(() => loadBookings())
   const [rooms, setRooms] = useState<RoomItem[]>(ROOMS)
@@ -359,7 +362,17 @@ const updateStatus = async (
     alert('Please enter a valid room price.')
     return
   }
+let imageUrl = "";
 
+try {
+  if (roomImageFile) {
+    imageUrl = await uploadRoomImage(roomImageFile);
+  }
+} catch (error) {
+  alert("Image upload failed.");
+  return;
+
+}
   const roomToSave: RoomItem = {
     id: newRoom.id,
     name: newRoom.name,
@@ -369,8 +382,8 @@ const updateStatus = async (
     floor: newRoom.floor,
     lastCleaned: new Date().toISOString(),
     image:
-      newRoom.image ||
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700&h=480&fit=crop&auto=format',
+      imageUrl ||
+        "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=700",
     size: newRoom.size,
     capacity: newRoom.capacity,
     available: newRoom.status === 'available',
@@ -402,6 +415,7 @@ const updateStatus = async (
       image: '',
       status: 'available',
     })
+    setRoomImageFile(null);
 
     alert('Room added successfully!')
   } catch (error) {
@@ -1300,24 +1314,34 @@ setReservations(serverBookings)
   />
 </div>
 
-    <div>
+   <div>
   <label className="block text-sm font-medium mb-2">
-    🖼 Room Image URL
+    🖼 Room Image
   </label>
 
   <input
-    placeholder="https://..."
-    value={newRoom.image}
-    onChange={(e) =>
-      setNewRoom({
-        ...newRoom,
-        image: e.target.value,
-      })
-    }
+    type="file"
+    accept="image/*"
+    onChange={(e) => {
+      if (e.target.files?.[0]) {
+        setRoomImageFile(e.target.files[0]);
+      }
+    }}
     className="w-full border rounded-lg px-3 py-3"
-    style={{ borderColor: "var(--border)" }}
+    style={{
+      borderColor: "var(--border)",
+    }}
   />
 </div>
+{roomImageFile && (
+  <div className="md:col-span-2">
+    <img
+      src={URL.createObjectURL(roomImageFile)}
+      alt="Preview"
+      className="w-full h-60 object-cover rounded-xl border"
+    />
+  </div>
+)}
 
     <div>
   <label className="block text-sm font-medium mb-2">
@@ -2076,14 +2100,24 @@ setReservations(serverBookings)
     onClick={() => setEditingRoom(null)}
   >
     <div
-      className="bg-white rounded-lg w-full max-w-lg p-6"
+        className="
+    bg-white
+    rounded-2xl
+    w-full
+    max-w-2xl
+    max-h-[90vh]
+    overflow-hidden
+    flex
+    flex-col
+    shadow-2xl
+  "
       onClick={(e) => e.stopPropagation()}
     >
       <h2 className="text-2xl font-semibold mb-5">
         Edit Room
       </h2>
 
-      <div className="space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         <input
           value={editingRoom.name}
@@ -2093,7 +2127,10 @@ setReservations(serverBookings)
               name: e.target.value,
             })
           }
-          className="w-full border p-2"
+         className="w-full rounded-xl border px-4 py-3 text-sm"
+style={{
+  borderColor: "var(--border)",
+}}
           placeholder="Room Name"
         />
 
@@ -2105,7 +2142,10 @@ setReservations(serverBookings)
               type: e.target.value,
             })
           }
-          className="w-full border p-2"
+         className="w-full rounded-xl border px-4 py-3 text-sm"
+style={{
+  borderColor: "var(--border)",
+}}
         >
           <option>Standard</option>
           <option>Deluxe</option>
@@ -2122,7 +2162,10 @@ setReservations(serverBookings)
               price: Number(e.target.value),
             })
           }
-          className="w-full border p-2"
+         className="w-full rounded-xl border px-4 py-3 text-sm"
+style={{
+  borderColor: "var(--border)",
+}}
           placeholder="Price"
         />
 
@@ -2135,7 +2178,10 @@ setReservations(serverBookings)
               capacity: Number(e.target.value),
             })
           }
-          className="w-full border p-2"
+         className="w-full rounded-xl border px-4 py-3 text-sm"
+style={{
+  borderColor: "var(--border)",
+}}
           placeholder="Maximum Guests"
         />
 
@@ -2148,7 +2194,10 @@ setReservations(serverBookings)
               size: Number(e.target.value),
             })
           }
-          className="w-full border p-2"
+         className="w-full rounded-xl border px-4 py-3 text-sm"
+style={{
+  borderColor: "var(--border)",
+}}
           placeholder="Room Size"
         />
 
@@ -2161,21 +2210,50 @@ setReservations(serverBookings)
               floor: Number(e.target.value),
             })
           }
-          className="w-full border p-2"
+         className="w-full rounded-xl border px-4 py-3 text-sm"
+style={{
+  borderColor: "var(--border)",
+}}
           placeholder="Floor"
         />
 
-        <input
-          value={editingRoom.image ?? ''}
-          onChange={(e) =>
-            setEditingRoom({
-              ...editingRoom,
-              image: e.target.value,
-            })
-          }
-          className="w-full border p-2"
-          placeholder="Image URL"
-        />
+        <div>
+  <label className="block text-sm font-medium mb-2">
+    🖼 Room Image
+  </label>
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => {
+      if (e.target.files?.[0]) {
+        setRoomImageFile(e.target.files[0]);
+      }
+    }}
+    className="w-full border rounded-lg px-3 py-3"
+    style={{
+      borderColor: "var(--border)",
+    }}
+  />
+</div>
+{roomImageFile && (
+  <div className="md:col-span-2">
+
+    <img
+      src={URL.createObjectURL(roomImageFile)}
+      alt="Preview"
+     className="
+w-full
+h-40
+sm:h-52
+object-cover
+rounded-xl
+border
+"
+    />
+
+  </div>
+)}
 
       </div>
 
@@ -2190,10 +2268,19 @@ setReservations(serverBookings)
 
         <button
           onClick={async () => {
-            const updated = await updateRoomInServer(
-              editingRoom.id,
-              editingRoom
-            )
+          let imageUrl = editingRoom.image
+
+if (roomImageFile) {
+  imageUrl = await uploadRoomImage(roomImageFile)
+}
+
+const updated = await updateRoomInServer(
+  editingRoom.id,
+  {
+    ...editingRoom,
+    image: imageUrl,
+  }
+)
 
             const nextRooms = rooms.map((room) =>
               room.id === updated.id ? updated : room
@@ -2201,7 +2288,7 @@ setReservations(serverBookings)
 
             setRooms(nextRooms)
             persistStoredRooms(nextRooms)
-
+            setRoomImageFile(null)
             setEditingRoom(null)
           }}
           className="px-5 py-2 bg-[#0B1736] text-white rounded"
